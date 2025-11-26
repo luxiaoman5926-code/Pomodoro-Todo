@@ -3,7 +3,7 @@ import { usePomodoro } from '../hooks/usePomodoro'
 import ThemedCard from './ThemedCard'
 
 const Timer = () => {
-  const { secondsLeft, formattedTime, isRunning, progress, toggle, reset } =
+  const { formattedTime, isRunning, progress, toggle, reset } =
     usePomodoro()
 
   return (
