@@ -1,19 +1,27 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { CheckCircle2, Circle, Plus, Trash2 } from 'lucide-react'
+import { CheckCircle2, Circle, Plus, Trash2, Loader2 } from 'lucide-react'
 import ThemedCard from './ThemedCard'
 import type { Task } from '../types'
 import { supabase } from '../supabase'
 
-const TodoList = () => {
+type TodoListProps = {
+  userId: string
+}
+
+const TodoList = ({ userId }: TodoListProps) => {
   const [tasks, setTasks] = useState<Task[]>([])
   const [text, setText] = useState('')
+  const [isLoading, setIsLoading] = useState(true)
+  const [isAdding, setIsAdding] = useState(false)
 
   useEffect(() => {
     const fetchTodos = async () => {
+      setIsLoading(true)
       const { data, error } = await supabase
         .from('todos')
         .select('*')
+        .eq('user_id', userId)
         .order('created_at', { ascending: false })
 
       if (error) {
@@ -21,10 +29,50 @@ const TodoList = () => {
       } else if (data) {
         setTasks(data)
       }
+      setIsLoading(false)
     }
 
     fetchTodos()
-  }, [])
+
+    // 订阅实时更新
+    const channel = supabase
+      .channel('todos_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'todos',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setTasks((prev) => {
+              // 避免重复添加
+              if (prev.some((t) => t.id === (payload.new as Task).id)) {
+                return prev
+              }
+              return [payload.new as Task, ...prev]
+            })
+          } else if (payload.eventType === 'UPDATE') {
+            setTasks((prev) =>
+              prev.map((t) =>
+                t.id === (payload.new as Task).id ? (payload.new as Task) : t
+              )
+            )
+          } else if (payload.eventType === 'DELETE') {
+            setTasks((prev) =>
+              prev.filter((t) => t.id !== (payload.old as Task).id)
+            )
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [userId])
 
   const completedCount = useMemo(
     () => tasks.filter((task) => task.completed).length,
@@ -34,11 +82,12 @@ const TodoList = () => {
   const handleAddTask = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const nextText = text.trim()
-    if (!nextText) return
+    if (!nextText || isAdding) return
 
+    setIsAdding(true)
     const { data, error } = await supabase
       .from('todos')
-      .insert([{ text: nextText }])
+      .insert([{ text: nextText, user_id: userId }])
       .select()
 
     if (error) {
@@ -47,6 +96,7 @@ const TodoList = () => {
       setTasks((prev) => [data[0], ...prev])
       setText('')
     }
+    setIsAdding(false)
   }
 
   const toggleTask = async (taskId: string, currentCompleted: boolean) => {
@@ -60,6 +110,7 @@ const TodoList = () => {
       .from('todos')
       .update({ completed: !currentCompleted })
       .eq('id', taskId)
+      .eq('user_id', userId)
 
     if (error) {
       console.error('Error updating todo:', error)
@@ -75,7 +126,11 @@ const TodoList = () => {
     const previousTasks = tasks
     setTasks((prev) => prev.filter((task) => task.id !== taskId))
 
-    const { error } = await supabase.from('todos').delete().eq('id', taskId)
+    const { error } = await supabase
+      .from('todos')
+      .delete()
+      .eq('id', taskId)
+      .eq('user_id', userId)
 
     if (error) {
       console.error('Error deleting todo:', error)
@@ -96,18 +151,29 @@ const TodoList = () => {
           placeholder="输入下一项任务..."
           value={text}
           onChange={(event) => setText(event.target.value)}
+          disabled={isAdding}
         />
         <button
           type="submit"
-          className="absolute bottom-2 right-2 top-2 flex items-center gap-1 rounded-xl border border-stone-200 bg-white px-4 text-sm font-bold text-stone-900 shadow-sm transition-colors hover:bg-stone-50 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
+          disabled={isAdding || !text.trim()}
+          className="absolute bottom-2 right-2 top-2 flex items-center gap-1 rounded-xl border border-stone-200 bg-white px-4 text-sm font-bold text-stone-900 shadow-sm transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
         >
-          <Plus size={16} /> 添加
+          {isAdding ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <Plus size={16} />
+          )}
+          添加
         </button>
       </form>
 
       {/* 列表 */}
       <div className="custom-scrollbar flex-1 space-y-3 overflow-y-auto pr-2">
-        {tasks.length === 0 ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="size-6 animate-spin text-stone-400 dark:text-white/50" />
+          </div>
+        ) : tasks.length === 0 ? (
           <p className="py-8 text-center text-sm text-stone-400 dark:text-white/50">
             暂无任务，写下第一件想完成的事情吧。
           </p>

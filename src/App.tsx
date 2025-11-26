@@ -70,7 +70,7 @@ const App = () => {
         {/* 主布局：双卡片 */}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <Timer />
-          <TodoList />
+          <TodoList userId={user.id} />
         </div>
       </div>
       <InstallPrompt />
