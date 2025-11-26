@@ -4,36 +4,89 @@
 - Styling: Tailwind CSS
 - Icons: Lucide React
 - Backend/Database: Supabase
-- State Management: React Hooks (Context API if needed)
+- State Management: React Hooks + Context API (PomodoroContext)
 
 # Code Style
 - Components: Must use Functional Components.
-- State: Must use React Hooks (useState, useEffect, useMemo, etc.).
+- State: Must use React Hooks (useState, useEffect, useMemo, useCallback, useRef, etc.).
 - Styling: Use Tailwind CSS utility classes exclusively. Avoid creating new CSS files or using inline styles unless absolutely necessary.
 - Naming Conventions:
-  - Components & Files: PascalCase (e.g., `TodoList.tsx`, `ThemedCard.tsx`).
+  - Components & Files: PascalCase (e.g., `TodoList.tsx`, `ThemedCard.tsx`, `TomatoProgress.tsx`).
   - Logic/Hooks/Utils: camelCase (e.g., `usePomodoro.ts`, `supabase.ts`).
-  - Constants: UPPER_SNAKE_CASE.
+  - Context Hooks: camelCase with Context suffix (e.g., `usePomodoroContext.tsx`).
+  - Constants: UPPER_SNAKE_CASE (e.g., `DEFAULT_CONFIG`, `PHASE_LABELS`).
 - Types: Explicitly define interfaces/types for props and data structures (refer to `src/types.ts`).
 
 # Project Structure
-- `src/components/`: Reusable UI components (e.g., `Timer`, `TodoList`).
-- `src/hooks/`: Custom React hooks (e.g., `usePomodoro`, `useTheme`).
-- `src/assets/`: Static assets like images and SVGs.
-- `src/types.ts`: Shared TypeScript type definitions.
-- `src/supabase.ts`: Supabase client initialization.
-- `src/App.tsx`: Main application layout and routing (if any).
-- `src/main.tsx`: Application entry point.
+```
+src/
+├── App.tsx                 # 主应用布局，集成 PomodoroProvider
+├── main.tsx                # 应用入口
+├── index.css               # 全局样式 (Tailwind)
+├── supabase.ts             # Supabase 客户端初始化
+├── types.ts                # 共享 TypeScript 类型定义
+├── assets/                 # 静态资源
+├── components/             # UI 组件
+│   ├── InstallPrompt.tsx   # PWA 安装提示
+│   ├── LoginPage.tsx       # 登录页面
+│   ├── NoisePlayer.tsx     # 白噪声播放器
+│   ├── ThemedCard.tsx      # 主题卡片容器
+│   ├── Timer.tsx           # 番茄钟计时器
+│   ├── TodoList.tsx        # 待办事项列表
+│   ├── TomatoProgress.tsx  # 番茄进度图标 (0-4)
+│   └── UserMenu.tsx        # 用户菜单
+└── hooks/                  # 自定义 Hooks
+    ├── useAuth.ts          # 认证状态管理
+    ├── usePomodoro.ts      # 番茄钟核心逻辑
+    ├── usePomodoroContext.tsx  # 番茄钟共享状态 (Context)
+    └── useTheme.ts         # 主题切换
+```
+
+# Core Types (src/types.ts)
+- `Task`: 待办任务 (id, text, completed, pomodoros)
+- `PomodoroPhase`: 番茄钟阶段 ('focus' | 'shortBreak' | 'longBreak')
+- `PomodoroConfig`: 番茄钟配置 (各阶段时长、长休息前循环数)
+- `AuthState` / `AuthContextType`: 认证相关类型
+
+# Pomodoro Timer Rules
+- **专注阶段**: 25 分钟
+- **短休息**: 5 分钟
+- **长休息**: 20 分钟 (每完成 4 个番茄钟后触发)
+- **循环规则**: 专注 → 短休息 → 专注 → 短休息 → 专注 → 短休息 → 专注 → 长休息 → 重复
+
+# State Sharing Pattern
+- `PomodoroContext` 用于 Timer 和 TodoList 之间共享状态
+- `selectedTask`: 当前选中专注的任务
+- `onPomodoroComplete`: 番茄钟完成时的回调，自动更新任务的番茄数
+- 任务的 `pomodoros` 字段记录已完成的番茄钟数量 (0-4)
 
 # Vibe & UI Preferences
 - Aesthetic: Minimalist, clean, modern.
-- Visual Language: Extensive use of rounded corners (`rounded-2xl`, `rounded-full`) and soft shadows (`shadow-card`, `shadow-depth`).
-- Theming: Support both Light and Dark modes using Tailwind's `dark:` modifier and the custom `stone` / `coal` color palettes.
-- Responsive Design: Mobile-first approach. Ensure layouts stack vertically on small screens and expand to grids on larger screens (`md:`, `lg:`).
+- Visual Language: Extensive use of rounded corners (`rounded-2xl`, `rounded-full`) and soft shadows.
+- Color Themes:
+  - 专注阶段: stone 色系 (深色主题)
+  - 短休息: emerald 色系 (绿色)
+  - 长休息: amber 色系 (琥珀色)
+- Theming: Support both Light and Dark modes using Tailwind's `dark:` modifier and custom color palettes.
+- Responsive Design: Mobile-first approach. Grid layout on larger screens (`md:grid-cols-2`).
 
 # Development Guidelines
-- Error Handling: Always implement error handling for async operations (e.g., API calls to Supabase).
-- User Feedback: Provide visual feedback for actions (e.g., loading states, error messages, toast notifications for failures).
-- Imports: Use absolute paths or clean relative paths. Group imports by: 1. React/External Libs, 2. Internal Components, 3. Hooks/Utils/Types.
+- Error Handling: Always implement error handling for async operations (Supabase API calls).
+- Optimistic Updates: Update local state first, then sync to database, rollback on error.
+- User Feedback: Provide visual feedback (loading states, selected states, progress indicators).
+- Imports Order: 1. React/External Libs, 2. Internal Components, 3. Hooks/Utils/Types.
 - Clean Code: Remove unused variables and imports before committing.
+- Database: Supabase `todos` table requires `pomodoros` column (INTEGER DEFAULT 0).
 
+# Database Schema (Supabase)
+```sql
+-- todos 表结构
+CREATE TABLE todos (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  text TEXT NOT NULL,
+  completed BOOLEAN DEFAULT FALSE,
+  pomodoros INTEGER DEFAULT 0,
+  user_id UUID REFERENCES auth.users(id),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
