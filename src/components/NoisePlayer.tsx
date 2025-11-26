@@ -14,7 +14,7 @@ const SOUNDS = [
     id: 'fire',
     icon: Flame,
     label: '篝火',
-    url: 'https://actions.google.com/sounds/v1/ambiences/fireplace.ogg',
+    url: 'https://actions.google.com/sounds/v1/ambiences/daytime_forrest_bonfire.ogg',
   },
   {
     id: 'cafe',

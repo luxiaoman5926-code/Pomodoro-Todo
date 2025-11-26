@@ -1,0 +1,39 @@
+# Technical Stack
+- Framework: React (Vite)
+- Language: TypeScript
+- Styling: Tailwind CSS
+- Icons: Lucide React
+- Backend/Database: Supabase
+- State Management: React Hooks (Context API if needed)
+
+# Code Style
+- Components: Must use Functional Components.
+- State: Must use React Hooks (useState, useEffect, useMemo, etc.).
+- Styling: Use Tailwind CSS utility classes exclusively. Avoid creating new CSS files or using inline styles unless absolutely necessary.
+- Naming Conventions:
+  - Components & Files: PascalCase (e.g., `TodoList.tsx`, `ThemedCard.tsx`).
+  - Logic/Hooks/Utils: camelCase (e.g., `usePomodoro.ts`, `supabase.ts`).
+  - Constants: UPPER_SNAKE_CASE.
+- Types: Explicitly define interfaces/types for props and data structures (refer to `src/types.ts`).
+
+# Project Structure
+- `src/components/`: Reusable UI components (e.g., `Timer`, `TodoList`).
+- `src/hooks/`: Custom React hooks (e.g., `usePomodoro`, `useTheme`).
+- `src/assets/`: Static assets like images and SVGs.
+- `src/types.ts`: Shared TypeScript type definitions.
+- `src/supabase.ts`: Supabase client initialization.
+- `src/App.tsx`: Main application layout and routing (if any).
+- `src/main.tsx`: Application entry point.
+
+# Vibe & UI Preferences
+- Aesthetic: Minimalist, clean, modern.
+- Visual Language: Extensive use of rounded corners (`rounded-2xl`, `rounded-full`) and soft shadows (`shadow-card`, `shadow-depth`).
+- Theming: Support both Light and Dark modes using Tailwind's `dark:` modifier and the custom `stone` / `coal` color palettes.
+- Responsive Design: Mobile-first approach. Ensure layouts stack vertically on small screens and expand to grids on larger screens (`md:`, `lg:`).
+
+# Development Guidelines
+- Error Handling: Always implement error handling for async operations (e.g., API calls to Supabase).
+- User Feedback: Provide visual feedback for actions (e.g., loading states, error messages, toast notifications for failures).
+- Imports: Use absolute paths or clean relative paths. Group imports by: 1. React/External Libs, 2. Internal Components, 3. Hooks/Utils/Types.
+- Clean Code: Remove unused variables and imports before committing.
+

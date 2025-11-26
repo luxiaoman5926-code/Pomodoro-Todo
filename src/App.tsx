@@ -1,4 +1,5 @@
 import { Moon, Sun } from 'lucide-react'
+import InstallPrompt from './components/InstallPrompt'
 import Timer from './components/Timer'
 import TodoList from './components/TodoList'
 import { useTheme } from './hooks/useTheme'
@@ -44,6 +45,7 @@ const App = () => {
           <TodoList />
         </div>
       </div>
+      <InstallPrompt />
     </div>
   )
 }
