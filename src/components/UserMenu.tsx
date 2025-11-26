@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { LogOut, User as UserIcon, ChevronDown } from 'lucide-react'
+import { SignOut, User as UserIcon, CaretDown } from '@phosphor-icons/react'
 import type { User } from '@supabase/supabase-js'
 
 type UserMenuProps = {
@@ -10,6 +10,7 @@ type UserMenuProps = {
 const UserMenu = ({ user, onSignOut }: UserMenuProps) => {
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [imageError, setImageError] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   // 点击外部关闭菜单
@@ -51,11 +52,12 @@ const UserMenu = ({ user, onSignOut }: UserMenuProps) => {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 rounded-full bg-white py-1.5 pl-1.5 pr-3 shadow-sm transition-all duration-200 hover:shadow-md dark:bg-white/10"
       >
-        {avatarUrl ? (
+        {avatarUrl && !imageError ? (
           <img
             src={avatarUrl}
             alt={displayName}
             className="size-7 rounded-full object-cover"
+            onError={() => setImageError(true)}
           />
         ) : (
           <div className="flex size-7 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500">
@@ -65,7 +67,7 @@ const UserMenu = ({ user, onSignOut }: UserMenuProps) => {
         <span className="max-w-[100px] truncate text-sm font-medium text-stone-700 dark:text-white">
           {displayName}
         </span>
-        <ChevronDown className={`size-4 text-stone-400 transition-transform duration-200 dark:text-white/50 ${isOpen ? 'rotate-180' : ''}`} />
+        <CaretDown weight="bold" className={`size-4 text-stone-400 transition-transform duration-200 dark:text-white/50 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {/* 下拉菜单 */}
@@ -90,7 +92,7 @@ const UserMenu = ({ user, onSignOut }: UserMenuProps) => {
               disabled={isLoading}
               className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-stone-600 transition-colors hover:bg-stone-100 disabled:opacity-50 dark:text-white/70 dark:hover:bg-white/5"
             >
-              <LogOut className="size-4" />
+              <SignOut size={16} weight="duotone" />
               <span>{isLoading ? '退出中...' : '退出登录'}</span>
             </button>
           </div>

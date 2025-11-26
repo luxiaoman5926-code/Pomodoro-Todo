@@ -1,4 +1,5 @@
-import { Coffee, Pause, Play, RotateCcw, SkipForward, Sun, Target } from 'lucide-react'
+import { useEffect } from 'react'
+import { Coffee, Pause, Play, ArrowCounterClockwise, SkipForward, Sun, Target } from '@phosphor-icons/react'
 import { usePomodoro } from '../hooks/usePomodoro'
 import { usePomodoroContext } from '../hooks/usePomodoroContext'
 import type { PomodoroPhase } from '../types'
@@ -33,7 +34,7 @@ const PHASE_STYLES: Record<PomodoroPhase, {
 }
 
 const Timer = () => {
-  const { selectedTask, onPomodoroComplete } = usePomodoroContext()
+  const { selectedTask, onPomodoroComplete, userId, registerTimerControls } = usePomodoroContext()
   
   const {
     phase,
@@ -49,7 +50,16 @@ const Timer = () => {
     reset,
     skip,
     switchPhase,
-  } = usePomodoro({ onFocusComplete: onPomodoroComplete })
+  } = usePomodoro({ 
+    onFocusComplete: onPomodoroComplete,
+    userId: userId || undefined,
+    taskId: selectedTask?.id || undefined,
+  })
+
+  // 注册控制函数供快捷键使用
+  useEffect(() => {
+    registerTimerControls({ toggle })
+  }, [toggle, registerTimerControls])
 
   const currentStyle = PHASE_STYLES[phase]
   const PhaseIcon = currentStyle.icon
@@ -118,6 +128,7 @@ const Timer = () => {
         <div className="mb-2 flex items-center gap-2">
           <PhaseIcon 
             size={24} 
+            weight="duotone"
             className={`${
               phase === 'focus' 
                 ? 'text-stone-600 dark:text-white/70' 
@@ -131,7 +142,7 @@ const Timer = () => {
           {formattedTime}
         </div>
         <p
-          className={`mt-2 font-medium text-stone-400 dark:text-white/60 ${isRunning ? 'animate-pulse' : ''}`}
+          className={`mt-2 mb-8 font-medium text-stone-400 dark:text-white/60 ${isRunning ? 'animate-pulse' : ''}`}
         >
           {phaseHint}
         </p>
@@ -149,20 +160,20 @@ const Timer = () => {
       </div>
 
       {/* 按钮组 */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-4 gap-3 px-1">
         {/* 主按钮：开始/暂停 */}
         <button
           type="button"
           onClick={toggle}
-          className={`col-span-2 flex h-14 items-center justify-center gap-2 rounded-2xl font-bold text-white shadow-lg shadow-stone-900/20 transition-transform active:scale-95 dark:shadow-none ${currentStyle.buttonClass}`}
+          className={`col-span-2 flex h-14 items-center justify-center gap-2 rounded-2xl font-bold text-white shadow-lg shadow-stone-900/20 transition-all active:scale-95 hover:-translate-y-0.5 dark:shadow-none ${currentStyle.buttonClass}`}
         >
           {isRunning ? (
             <>
-              <Pause size={20} fill="currentColor" /> 暂停
+              <Pause size={20} weight="fill" /> 暂停
             </>
           ) : (
             <>
-              <Play size={20} fill="currentColor" /> 开始
+              <Play size={20} weight="fill" /> 开始
             </>
           )}
         </button>
@@ -174,7 +185,7 @@ const Timer = () => {
           className="col-span-1 flex h-14 items-center justify-center gap-1 rounded-2xl bg-stone-100 font-bold text-stone-700 transition-colors hover:bg-stone-200 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
           title="跳过当前阶段"
         >
-          <SkipForward size={20} />
+          <SkipForward size={20} weight="bold" />
         </button>
 
         {/* 重置按钮 */}
@@ -184,20 +195,30 @@ const Timer = () => {
           className="col-span-1 flex h-14 items-center justify-center gap-1 rounded-2xl bg-stone-100 font-bold text-stone-700 transition-colors hover:bg-stone-200 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
           title="重置当前阶段"
         >
-          <RotateCcw size={20} />
+          <ArrowCounterClockwise size={20} weight="bold" />
         </button>
       </div>
 
       {/* 当前专注任务 */}
       {selectedTask && phase === 'focus' && (
-        <div className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-amber-50 px-4 py-2 dark:bg-amber-900/20">
-          <Target size={14} className="text-amber-600 dark:text-amber-400" />
-          <span className="text-sm font-medium text-amber-700 dark:text-amber-300 truncate max-w-[200px]">
-            {selectedTask.text}
-          </span>
-          <span className="text-xs text-amber-500 dark:text-amber-400/70">
-            ({selectedTask.pomodoros || 0}/4 🍅)
-          </span>
+        <div className="mt-6 flex items-center justify-between gap-3 rounded-2xl border border-amber-200/50 bg-amber-50/80 px-4 py-3 shadow-sm backdrop-blur-sm dark:border-amber-500/10 dark:bg-amber-500/10">
+          <div className="flex flex-1 items-center gap-3 overflow-hidden">
+            <div className="flex size-8 flex-none items-center justify-center rounded-full bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400">
+              <Target size={16} weight="duotone" />
+            </div>
+            <div className="flex flex-col overflow-hidden">
+              <span className="truncate text-sm font-semibold text-stone-900 dark:text-white">
+                {selectedTask.text}
+              </span>
+              <span className="text-xs font-medium text-amber-600/80 dark:text-amber-400/80">
+                正在进行第 {selectedTask.pomodoros || 0} 个番茄钟
+              </span>
+            </div>
+          </div>
+          <div className="flex flex-none items-center gap-1 rounded-full bg-white px-2 py-1 text-xs font-bold text-amber-600 shadow-sm dark:bg-white/10 dark:text-amber-400">
+            <span>{selectedTask.pomodoros || 0}/4</span>
+            <span>🍅</span>
+          </div>
         </div>
       )}
 

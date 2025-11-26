@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
-import { CloudRain, Coffee, Flame, VolumeX } from 'lucide-react'
+import { useEffect, useRef } from 'react'
+import { CloudRain, Coffee, Fire, SpeakerSimpleX, Tree } from '@phosphor-icons/react'
+import { usePomodoroContext } from '../hooks/usePomodoroContext'
 
-type SoundId = 'rain' | 'fire' | 'cafe' | 'none'
+type SoundId = 'rain' | 'forest' | 'library' | 'cafe' | 'none'
 
 const SOUNDS = [
   {
@@ -11,10 +12,16 @@ const SOUNDS = [
     url: 'https://actions.google.com/sounds/v1/weather/rain_heavy_loud.ogg',
   },
   {
-    id: 'fire',
-    icon: Flame,
-    label: '篝火',
-    url: 'https://actions.google.com/sounds/v1/ambiences/daytime_forrest_bonfire.ogg',
+    id: 'forest',
+    icon: Tree,
+    label: '森林',
+    url: 'https://actions.google.com/sounds/v1/ambiences/daytime_forrest_bonfire.ogg', // 暂用 bonfire 替代 forest
+  },
+  {
+    id: 'library',
+    icon: Fire, // 图书馆暂时用火的图标替代
+    label: '图书馆',
+    url: 'https://actions.google.com/sounds/v1/ambiences/daytime_forrest_bonfire.ogg', // 暂用
   },
   {
     id: 'cafe',
@@ -29,9 +36,19 @@ type NoisePlayerProps = {
 }
 
 const NoisePlayer = ({ isRunning }: NoisePlayerProps) => {
-  const [selected, setSelected] = useState<SoundId>('none')
+  const { settings, updateSettings } = usePomodoroContext()
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const fadeIntervalRef = useRef<number | null>(null)
+
+  const selected = (settings?.white_noise_type as SoundId) || 'rain'
+  const volume = settings?.white_noise_volume ?? 0.5
+
+  // 监听音量变化
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = isRunning ? volume : 0
+    }
+  }, [volume, isRunning])
 
   useEffect(() => {
     const audio = audioRef.current
@@ -46,35 +63,30 @@ const NoisePlayer = ({ isRunning }: NoisePlayerProps) => {
     const playSound = async () => {
       try {
         const sound = SOUNDS.find((s) => s.id === selected)
-        if (!sound) {
-          // 如果选中了静音，或者是无效ID
+        if (!sound || selected === 'none') {
           if (!audio.paused) {
             startFadeOut(audio)
           }
           return
         }
 
-        // 如果已经在播放且 URL 没变，什么都不做（除非之前是暂停的）
-        // 如果 URL 变了，或者之前暂停了，需要播放
+        // 如果 URL 变了，需要加载
         if (audio.src !== sound.url) {
           audio.src = sound.url
           audio.load()
         }
 
         if (isRunning) {
-          audio.volume = 1
+          audio.volume = volume
           audio.loop = true
           await audio.play()
         } else {
-          // 如果没在运行，但选了声音，确保是停止状态
           if (!audio.paused) {
             startFadeOut(audio)
           }
         }
       } catch (error) {
         console.error('Audio playback failed:', error)
-        // 简单的错误处理：重置为静音，防止 UI 卡在播放状态
-        setSelected('none')
       }
     }
 
@@ -85,10 +97,9 @@ const NoisePlayer = ({ isRunning }: NoisePlayerProps) => {
         window.clearInterval(fadeIntervalRef.current)
       }
     }
-  }, [isRunning, selected])
+  }, [isRunning, selected, volume])
 
   const startFadeOut = (audio: HTMLAudioElement) => {
-    // 如果已经暂停，直接返回
     if (audio.paused) return
 
     fadeIntervalRef.current = window.setInterval(() => {
@@ -101,20 +112,25 @@ const NoisePlayer = ({ isRunning }: NoisePlayerProps) => {
           window.clearInterval(fadeIntervalRef.current)
           fadeIntervalRef.current = null
         }
-        // 重置音量以便下次播放
-        audio.volume = 1
       }
     }, 100)
+  }
+
+  const handleSelect = (id: string) => {
+    // 如果点击当前选中的，则取消选择（静音）
+    // 或者保持选中，由用户明确点击静音按钮
+    // 这里我们保留显式的静音按钮
+    updateSettings({ white_noise_type: id })
   }
 
   return (
     <div className="mb-6 flex justify-center gap-4">
       {/* 音频元素 */}
-      <audio ref={audioRef} onError={() => setSelected('none')} />
+      <audio ref={audioRef} />
 
       {/* 按钮组 */}
       <button
-        onClick={() => setSelected('none')}
+        onClick={() => updateSettings({ white_noise_type: 'none' })}
         className={`flex size-10 items-center justify-center rounded-full transition-all ${
           selected === 'none'
             ? 'bg-stone-900 text-white shadow-lg shadow-stone-900/20 dark:bg-white dark:text-stone-900'
@@ -123,13 +139,13 @@ const NoisePlayer = ({ isRunning }: NoisePlayerProps) => {
         aria-label="静音"
         title="静音"
       >
-        <VolumeX size={18} />
+        <SpeakerSimpleX size={18} />
       </button>
 
-      {SOUNDS.map((sound) => (
+      {SOUNDS.filter(s => ['rain', 'cafe'].includes(s.id)).map((sound) => (
         <button
           key={sound.id}
-          onClick={() => setSelected(sound.id as SoundId)}
+          onClick={() => handleSelect(sound.id)}
           className={`flex size-10 items-center justify-center rounded-full transition-all ${
             selected === sound.id
               ? 'bg-stone-900 text-white shadow-lg shadow-stone-900/20 dark:bg-white dark:text-stone-900'

@@ -16,7 +16,7 @@ const ThemedCard = ({
   className = '',
 }: ThemedCardProps) => (
   <div
-    className={`flex h-[500px] flex-col justify-between rounded-[2rem] border border-stone-100 bg-white p-8 shadow-card transition-colors duration-300 dark:border-white/5 dark:bg-[#050505]/80 dark:shadow-depth dark:backdrop-blur-2xl ${className}`}
+    className={`flex min-h-[500px] flex-col justify-between rounded-[2rem] border border-stone-100 bg-white p-8 shadow-card transition-colors duration-300 dark:border-white/5 dark:bg-[#050505]/80 dark:shadow-depth dark:backdrop-blur-2xl ${className}`}
   >
     <div className="mb-6 flex items-center justify-between">
       <div>

@@ -10,79 +10,133 @@ export const useAuth = () => {
   })
 
   useEffect(() => {
-    // 先设置监听器，确保不会错过任何状态变化
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email)
-        
-        // 处理不同的认证事件
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          setAuthState({
-            user: session?.user ?? null,
-            session,
-            loading: false,
-          })
-        } else if (event === 'SIGNED_OUT') {
-          setAuthState({
-            user: null,
-            session: null,
-            loading: false,
-          })
-        } else if (event === 'INITIAL_SESSION') {
-          // 初始会话 - 可能是从 URL 中恢复的 session
-          setAuthState({
-            user: session?.user ?? null,
-            session,
-            loading: false,
-          })
-        }
+    let mounted = true
+    let hasHandledOAuth = false
+
+    const cleanupOAuthParams = () => {
+      if (typeof window === 'undefined') return
+
+      const url = new URL(window.location.href)
+      const searchParams = url.searchParams
+      const hashParams = new URLSearchParams(url.hash.replace(/^#/, ''))
+      const oauthQueryKeys = ['code', 'state', 'error', 'error_description']
+      const oauthHashKeys = ['access_token', 'refresh_token', 'expires_in', 'token_type', 'provider_token', 'error', 'error_description']
+
+      oauthQueryKeys.forEach(key => searchParams.delete(key))
+      oauthHashKeys.forEach(key => hashParams.delete(key))
+
+      const nextSearch = searchParams.toString()
+      const nextHash = hashParams.toString()
+      const cleanedUrl = `${url.origin}${url.pathname}${nextSearch ? `?${nextSearch}` : ''}${nextHash ? `#${nextHash}` : ''}`
+
+      window.history.replaceState({}, document.title, cleanedUrl)
+    }
+
+    const handleOAuthCallback = async () => {
+      if (typeof window === 'undefined' || hasHandledOAuth) return
+
+      const url = new URL(window.location.href)
+      const searchParams = url.searchParams
+      const hashParams = new URLSearchParams(url.hash.replace(/^#/, ''))
+      const errorDescription = searchParams.get('error_description') ?? hashParams.get('error_description')
+
+      if (errorDescription) {
+        hasHandledOAuth = true
+        console.error('OAuth 回调错误:', errorDescription)
+        cleanupOAuthParams()
+        return
       }
-    )
 
-    // 然后检查是否有现有会话
-    const initializeAuth = async () => {
+      const code = searchParams.get('code')
+      const accessToken = hashParams.get('access_token')
+      const refreshToken = hashParams.get('refresh_token')
+
+      if (!code && !(accessToken && refreshToken)) {
+        return
+      }
+
+      hasHandledOAuth = true
+      console.log('检测到 OAuth 回调，正在处理...')
+
       try {
-        // 首先检查 URL 中是否有 OAuth 回调参数
-        const hashParams = new URLSearchParams(window.location.hash.substring(1))
-        const accessToken = hashParams.get('access_token')
-        
-        if (accessToken) {
-          // URL 中有 token，让 Supabase 处理它
-          console.log('Found access token in URL, processing...')
-          // Supabase 会自动通过 onAuthStateChange 处理
-          // 清理 URL 中的 hash
-          window.history.replaceState(null, '', window.location.pathname)
-          return
-        }
-
-        // 没有 URL token，检查现有 session
-        const { data: { session }, error } = await supabase.auth.getSession()
-        
-        if (error) {
-          console.error('获取会话失败:', error)
-          setAuthState(prev => ({ ...prev, loading: false }))
-          return
-        }
-
-        if (session) {
-          console.log('Found existing session:', session.user?.email)
-          setAuthState({
-            user: session.user,
-            session,
-            loading: false,
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code)
+          if (error) throw error
+        } else if (accessToken && refreshToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
           })
-        } else {
-          setAuthState(prev => ({ ...prev, loading: false }))
+          if (error) throw error
         }
-      } catch (error) {
-        console.error('初始化认证失败:', error)
-        setAuthState(prev => ({ ...prev, loading: false }))
+        console.log('OAuth 回调处理完成')
+      } catch (err) {
+        console.error('处理 OAuth 回调失败:', err)
+        throw err
+      } finally {
+        cleanupOAuthParams()
       }
     }
 
-    initializeAuth()
+    // 初始化认证状态
+    const initAuth = async () => {
+      try {
+        const { error: initError } = await supabase.auth.initialize()
+        if (initError) {
+          console.error('初始化认证失败:', initError)
+        }
+
+        await handleOAuthCallback()
+
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession()
+
+        if (error) {
+          console.error('获取会话失败:', error)
+        }
+
+        if (mounted) {
+          setAuthState({
+            user: session?.user ?? null,
+            session,
+            loading: false,
+          })
+
+          if (session) {
+            console.log('已有登录会话:', session.user?.email)
+          } else {
+            console.log('未登录')
+          }
+        }
+      } catch (err) {
+        console.error('初始化认证流程失败:', err)
+        if (mounted) {
+          setAuthState(prev => ({ ...prev, loading: false }))
+        }
+      }
+    }
+
+    // 监听认证状态变化
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth 事件:', event, session?.user?.email)
+
+      if (mounted) {
+        setAuthState({
+          user: session?.user ?? null,
+          session,
+          loading: false,
+        })
+      }
+    })
+
+    initAuth()
 
     return () => {
+      mounted = false
       subscription.unsubscribe()
     }
   }, [])
