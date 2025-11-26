@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { CheckCircle2, Circle, Plus, Trash2, Loader2 } from 'lucide-react'
+import { CheckCircle2, Circle, Plus, Trash2, Loader2, Target } from 'lucide-react'
 import ThemedCard from './ThemedCard'
+import TomatoProgress from './TomatoProgress'
 import type { Task } from '../types'
 import { supabase } from '../supabase'
+import { usePomodoroContext } from '../hooks/usePomodoroContext'
 
 type TodoListProps = {
   userId: string
@@ -14,6 +16,33 @@ const TodoList = ({ userId }: TodoListProps) => {
   const [text, setText] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isAdding, setIsAdding] = useState(false)
+
+  const { selectedTask, setSelectedTask, registerTaskUpdater } = usePomodoroContext()
+
+  // 注册任务更新函数
+  useEffect(() => {
+    const updateTaskPomodoros = async (taskId: string, pomodoros: number) => {
+      // 乐观更新本地状态
+      setTasks((prev) =>
+        prev.map((task) =>
+          task.id === taskId ? { ...task, pomodoros } : task
+        )
+      )
+
+      // 同步到数据库
+      const { error } = await supabase
+        .from('todos')
+        .update({ pomodoros })
+        .eq('id', taskId)
+        .eq('user_id', userId)
+
+      if (error) {
+        console.error('Error updating pomodoros:', error)
+      }
+    }
+
+    registerTaskUpdater(updateTaskPomodoros)
+  }, [userId, registerTaskUpdater])
 
   useEffect(() => {
     const fetchTodos = async () => {
@@ -87,7 +116,7 @@ const TodoList = ({ userId }: TodoListProps) => {
     setIsAdding(true)
     const { data, error } = await supabase
       .from('todos')
-      .insert([{ text: nextText, user_id: userId }])
+      .insert([{ text: nextText, user_id: userId, pomodoros: 0 }])
       .select()
 
     if (error) {
@@ -126,6 +155,11 @@ const TodoList = ({ userId }: TodoListProps) => {
     const previousTasks = tasks
     setTasks((prev) => prev.filter((task) => task.id !== taskId))
 
+    // 如果删除的是选中的任务，清除选中状态
+    if (selectedTask?.id === taskId) {
+      setSelectedTask(null)
+    }
+
     const { error } = await supabase
       .from('todos')
       .delete()
@@ -138,12 +172,34 @@ const TodoList = ({ userId }: TodoListProps) => {
     }
   }
 
+  const handleSelectTask = (task: Task) => {
+    // 如果任务已完成，不允许选择
+    if (task.completed) return
+    
+    // 切换选择状态
+    if (selectedTask?.id === task.id) {
+      setSelectedTask(null)
+    } else {
+      setSelectedTask(task)
+    }
+  }
+
   return (
     <ThemedCard
       label="待办事项"
       title="专注目标"
       meta={`${completedCount}/${tasks.length || 0} 已完成`}
     >
+      {/* 当前专注任务提示 */}
+      {selectedTask && (
+        <div className="mb-4 flex items-center gap-2 rounded-xl bg-amber-50 px-4 py-3 dark:bg-amber-900/20">
+          <Target size={16} className="text-amber-600 dark:text-amber-400" />
+          <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
+            正在专注: {selectedTask.text}
+          </span>
+        </div>
+      )}
+
       {/* 输入框 */}
       <form onSubmit={handleAddTask} className="group relative mb-6">
         <input
@@ -182,32 +238,43 @@ const TodoList = ({ userId }: TodoListProps) => {
             <TaskItem
               key={task.id}
               task={task}
+              isSelected={selectedTask?.id === task.id}
               onToggle={() => toggleTask(task.id, task.completed)}
               onDelete={() => deleteTask(task.id)}
+              onSelect={() => handleSelectTask(task)}
             />
           ))
         )}
       </div>
+
+      {/* 提示信息 */}
+      <p className="mt-4 text-center text-xs text-stone-400 dark:text-white/40">
+        点击任务右侧的 🎯 图标选择要专注的任务
+      </p>
     </ThemedCard>
   )
 }
 
 type TaskItemProps = {
   task: Task
+  isSelected: boolean
   onToggle: () => void
   onDelete: () => void
+  onSelect: () => void
 }
 
-const TaskItem = ({ task, onToggle, onDelete }: TaskItemProps) => (
+const TaskItem = ({ task, isSelected, onToggle, onDelete, onSelect }: TaskItemProps) => (
   <div
     className={`group flex items-center justify-between rounded-2xl border p-4 transition-all ${
-      task.completed
-        ? 'border-transparent bg-stone-50 opacity-60 hover:opacity-100 dark:bg-white/5'
-        : 'cursor-pointer border-stone-100 bg-white hover:border-stone-300 hover:shadow-md dark:border-white/5 dark:bg-white/5 dark:hover:border-white/30'
+      isSelected
+        ? 'border-amber-300 bg-amber-50 ring-2 ring-amber-200 dark:border-amber-500/50 dark:bg-amber-900/20 dark:ring-amber-500/30'
+        : task.completed
+          ? 'border-transparent bg-stone-50 opacity-60 hover:opacity-100 dark:bg-white/5'
+          : 'border-stone-100 bg-white hover:border-stone-300 hover:shadow-md dark:border-white/5 dark:bg-white/5 dark:hover:border-white/30'
     }`}
   >
     <div
-      className="flex flex-1 items-center gap-3"
+      className="flex flex-1 items-center gap-3 cursor-pointer"
       onClick={onToggle}
       onKeyDown={(e) => e.key === 'Enter' && onToggle()}
       role="button"
@@ -231,14 +298,37 @@ const TaskItem = ({ task, onToggle, onDelete }: TaskItemProps) => (
         {task.text}
       </span>
     </div>
-    <button
-      type="button"
-      onClick={onDelete}
-      className="text-stone-300 transition-colors hover:text-red-500 dark:text-white/50 dark:hover:text-white"
-      aria-label="删除任务"
-    >
-      <Trash2 size={18} />
-    </button>
+
+    {/* 番茄进度 */}
+    <div className="flex items-center gap-2">
+      <TomatoProgress count={task.pomodoros || 0} size={22} />
+
+      {/* 选择按钮（仅未完成的任务显示） */}
+      {!task.completed && (
+        <button
+          type="button"
+          onClick={onSelect}
+          className={`flex items-center justify-center rounded-lg p-1.5 transition-colors ${
+            isSelected
+              ? 'bg-amber-200 text-amber-700 dark:bg-amber-600 dark:text-white'
+              : 'text-stone-300 hover:bg-stone-100 hover:text-amber-500 dark:text-white/30 dark:hover:bg-white/10 dark:hover:text-amber-400'
+          }`}
+          title={isSelected ? '取消选择' : '选择此任务专注'}
+        >
+          <Target size={18} />
+        </button>
+      )}
+
+      {/* 删除按钮 */}
+      <button
+        type="button"
+        onClick={onDelete}
+        className="text-stone-300 transition-colors hover:text-red-500 dark:text-white/50 dark:hover:text-white"
+        aria-label="删除任务"
+      >
+        <Trash2 size={18} />
+      </button>
+    </div>
   </div>
 )
 

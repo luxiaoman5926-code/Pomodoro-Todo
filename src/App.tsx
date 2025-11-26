@@ -5,6 +5,7 @@ import Timer from './components/Timer'
 import TodoList from './components/TodoList'
 import UserMenu from './components/UserMenu'
 import { useAuth } from './hooks/useAuth'
+import { PomodoroProvider } from './hooks/usePomodoroContext'
 import { useTheme } from './hooks/useTheme'
 
 const App = () => {
@@ -68,10 +69,12 @@ const App = () => {
         </header>
 
         {/* 主布局：双卡片 */}
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <Timer />
-          <TodoList userId={user.id} />
-        </div>
+        <PomodoroProvider>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <Timer />
+            <TodoList userId={user.id} />
+          </div>
+        </PomodoroProvider>
       </div>
       <InstallPrompt />
     </div>
