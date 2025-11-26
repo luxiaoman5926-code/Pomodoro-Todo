@@ -1,12 +1,39 @@
-import { Moon, Sun } from 'lucide-react'
+import { Moon, Sun, Loader2 } from 'lucide-react'
 import InstallPrompt from './components/InstallPrompt'
+import LoginPage from './components/LoginPage'
 import Timer from './components/Timer'
 import TodoList from './components/TodoList'
+import UserMenu from './components/UserMenu'
+import { useAuth } from './hooks/useAuth'
 import { useTheme } from './hooks/useTheme'
 
 const App = () => {
   const { theme, toggleTheme } = useTheme()
+  const { user, loading, signInWithGoogle, signInWithGithub, signOut } = useAuth()
 
+  // 加载中状态
+  if (loading) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-stone-50 dark:bg-coal">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="size-10 animate-spin text-amber-500" />
+          <p className="text-sm text-stone-500 dark:text-white/50">加载中...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // 未登录显示登录页
+  if (!user) {
+    return (
+      <LoginPage
+        onGoogleSignIn={signInWithGoogle}
+        onGithubSignIn={signInWithGithub}
+      />
+    )
+  }
+
+  // 已登录显示主应用
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-stone-50 p-8 text-stone-900 transition-colors duration-300 dark:bg-coal dark:text-fog">
       <div className="w-full max-w-5xl">
@@ -36,6 +63,7 @@ const App = () => {
                 <Sun className="size-5" />
               )}
             </button>
+            <UserMenu user={user} onSignOut={signOut} />
           </div>
         </header>
 
