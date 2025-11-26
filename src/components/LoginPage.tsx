@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Github, Loader2, Timer, CheckSquare } from 'lucide-react'
+import { Github, Loader2, Timer } from 'lucide-react'
 
 type LoginPageProps = {
   onGoogleSignIn: () => Promise<void>
@@ -38,19 +38,16 @@ const LoginPage = ({ onGoogleSignIn, onGithubSignIn }: LoginPageProps) => {
     <div className="flex min-h-screen w-full items-center justify-center bg-stone-50 p-8 transition-colors duration-300 dark:bg-coal">
       {/* 背景装饰 */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute -left-40 -top-40 size-80 rounded-full bg-gradient-to-br from-amber-200/30 to-orange-300/20 blur-3xl dark:from-amber-500/10 dark:to-orange-500/5" />
-        <div className="absolute -bottom-40 -right-40 size-96 rounded-full bg-gradient-to-br from-rose-200/30 to-pink-300/20 blur-3xl dark:from-rose-500/10 dark:to-pink-500/5" />
+        <div className="absolute -left-40 -top-40 size-80 rounded-full bg-gradient-to-br from-red-200/40 to-rose-300/30 blur-3xl dark:from-red-500/15 dark:to-rose-500/10" />
+        <div className="absolute -bottom-40 -right-40 size-96 rounded-full bg-gradient-to-br from-rose-200/40 to-red-300/30 blur-3xl dark:from-rose-500/15 dark:to-red-500/10" />
       </div>
 
       <div className="relative z-10 w-full max-w-md">
         {/* Logo & 标题 */}
         <div className="mb-10 text-center">
-          <div className="mb-6 inline-flex items-center justify-center gap-3">
-            <div className="flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-orange-500/25">
-              <Timer className="size-7 text-white" />
-            </div>
-            <div className="flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 shadow-lg shadow-teal-500/25">
-              <CheckSquare className="size-7 text-white" />
+          <div className="mb-6 inline-flex items-center justify-center">
+            <div className="flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 shadow-xl shadow-red-500/30">
+              <Timer className="size-8 text-white" />
             </div>
           </div>
           <h1 className="mb-2 text-3xl font-extrabold tracking-tight text-stone-900 dark:text-white">
