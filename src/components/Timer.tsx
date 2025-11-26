@@ -34,8 +34,16 @@ const PHASE_STYLES: Record<PomodoroPhase, {
 }
 
 const Timer = () => {
-  const { selectedTask, onPomodoroComplete, userId, registerTimerControls } = usePomodoroContext()
+  const { selectedTask, onPomodoroComplete, userId, registerTimerControls, settings } = usePomodoroContext()
   
+  // 将用户设置转换为番茄钟配置
+  const config = settings ? {
+    focusDuration: settings.focus_duration,
+    shortBreakDuration: settings.short_break_duration,
+    longBreakDuration: settings.long_break_duration,
+    cyclesBeforeLongBreak: settings.cycles_before_long_break,
+  } : undefined
+
   const {
     phase,
     phaseLabel,
@@ -51,9 +59,11 @@ const Timer = () => {
     skip,
     switchPhase,
   } = usePomodoro({ 
+    config,
     onFocusComplete: onPomodoroComplete,
     userId: userId || undefined,
     taskId: selectedTask?.id || undefined,
+    settings,
   })
 
   // 注册控制函数供快捷键使用

@@ -129,21 +129,31 @@ export const usePomodoro = (options: UsePomodoroOptions = {}) => {
   useEffect(() => {
     if (!isRunning) return undefined
 
+    const startTime = Date.now()
+    const startSeconds = secondsLeft
+
     const tick = window.setInterval(() => {
+      const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000)
+      const newSecondsLeft = startSeconds - elapsedSeconds
+
       setSecondsLeft((prev) => {
-        if (prev <= 1) {
+        // 如果已经在其他地方被修改为0（例如跳过），则保持0
+        if (prev <= 0) return 0
+
+        if (newSecondsLeft <= 0) {
           window.clearInterval(tick)
           setIsRunning(false)
           setPhaseJustCompleted(true)
           return 0
         }
-        return prev - 1
+        return newSecondsLeft
       })
-    }, 1000)
+    }, 100) // 使用更短的间隔检查，确保倒计时平滑，虽然实际更新还是基于秒
 
     return () => {
       window.clearInterval(tick)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRunning])
 
   // 更新网页标题（显示倒计时）
