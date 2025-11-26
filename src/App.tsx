@@ -1,29 +1,51 @@
+import { Moon, Sun } from 'lucide-react'
 import Timer from './components/Timer'
 import TodoList from './components/TodoList'
+import { useTheme } from './hooks/useTheme'
 
-const App = () => (
-  <div className="min-h-screen bg-gradient-to-b from-coal via-black to-graphite px-4 py-10">
-    <main className="mx-auto flex w-full max-w-5xl flex-col gap-10 rounded-[40px] border border-white/5 bg-[#050505]/80 p-6 text-white shadow-depth backdrop-blur-2xl md:p-10">
-      <header className="space-y-3">
-        <p className="text-xs uppercase tracking-[0.45em] text-white/50">
-          深度专注
-        </p>
-        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-          <h1 className="text-4xl font-semibold md:text-5xl">
-            番茄钟待办工作台
-          </h1>
-          <p className="text-sm text-white/60">
-            25 分钟冲刺 · 5 分钟休息 · 循环推进高效的一天
-          </p>
+const App = () => {
+  const { theme, toggleTheme } = useTheme()
+
+  return (
+    <div className="flex min-h-screen w-full items-center justify-center bg-stone-50 p-8 text-stone-900 transition-colors duration-300 dark:bg-coal dark:text-fog">
+      <div className="w-full max-w-5xl">
+        {/* 顶部 Header */}
+        <header className="mb-8 flex items-end justify-between px-2">
+          <div>
+            <p className="mb-1 text-xs font-bold tracking-widest text-stone-500 dark:text-white/50">
+              深度专注
+            </p>
+            <h1 className="text-4xl font-extrabold tracking-tight text-stone-900 dark:text-white">
+              番茄钟待办工作台
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <p className="hidden text-sm font-medium text-stone-400 dark:text-white/60 sm:block">
+              25 分钟冲刺 · 5 分钟休息
+            </p>
+            <button
+              onClick={toggleTheme}
+              className="flex size-10 items-center justify-center rounded-full bg-white text-stone-900 shadow-sm transition-transform hover:scale-105 active:scale-95 dark:bg-white/10 dark:text-white"
+              aria-label="切换主题"
+            >
+              {theme === 'light' ? (
+                <Moon className="size-5" />
+              ) : (
+                <Sun className="size-5" />
+              )}
+            </button>
+          </div>
+        </header>
+
+        {/* 主布局：双卡片 */}
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <Timer />
+          <TodoList />
         </div>
-      </header>
-
-      <section className="grid gap-6 lg:grid-cols-2">
-        <Timer />
-        <TodoList />
-      </section>
-    </main>
-  </div>
-)
+      </div>
+    </div>
+  )
+}
 
 export default App

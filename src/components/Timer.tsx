@@ -1,99 +1,67 @@
-import { Pause, Play, RefreshCw } from 'lucide-react'
-import GlassPanel from './GlassPanel'
+import { Pause, Play, RotateCcw } from 'lucide-react'
 import { usePomodoro } from '../hooks/usePomodoro'
+import ThemedCard from './ThemedCard'
 
 const Timer = () => {
-  const { formattedTime, isRunning, progress, toggle, reset } = usePomodoro()
-  const progressPercent = Math.round(progress * 100)
+  const { secondsLeft, formattedTime, isRunning, progress, toggle, reset } =
+    usePomodoro()
 
   return (
-    <GlassPanel
+    <ThemedCard
       label="番茄钟"
       title="专注阶段"
-      meta={`${progressPercent}% 完成`}
-      metaClassName="text-sm font-medium text-white/60"
-      className="bg-gradient-to-b from-ash/80 to-ash/20"
+      meta={`${Math.round(progress * 100)}% 完成`}
     >
-      <TimerDisplay formattedTime={formattedTime} isRunning={isRunning} />
-      <div>
-        <TimerProgressBar progressPercent={progressPercent} />
-        <TimerControls
-          isRunning={isRunning}
-          onToggle={toggle}
-          onReset={reset}
+      {/* 倒计时区域 */}
+      <div className="relative flex flex-1 flex-col items-center justify-center">
+        <div className="text-8xl font-black tracking-tighter text-stone-900 transition-colors dark:text-white tabular-nums">
+          {formattedTime}
+        </div>
+        <p
+          className={`mt-2 font-medium text-stone-400 dark:text-white/60 ${isRunning ? 'animate-pulse' : ''}`}
+        >
+          {isRunning ? '沉浸中...' : '准备开始'}
+        </p>
+      </div>
+
+      {/* 进度条 */}
+      <div className="mb-8 h-2 w-full overflow-hidden rounded-full bg-stone-100 dark:bg-white/10">
+        <div
+          className="h-full rounded-full bg-stone-900 transition-all duration-1000 ease-linear dark:bg-white"
+          style={{ width: `${progress * 100}%` }}
         />
       </div>
-    </GlassPanel>
+
+      {/* 按钮组 */}
+      <div className="grid grid-cols-3 gap-4">
+        {/* 主按钮：纯黑(浅色) / 白色(暗色) */}
+        <button
+          type="button"
+          onClick={toggle}
+          className="col-span-2 flex h-14 items-center justify-center gap-2 rounded-2xl bg-stone-900 font-bold text-white shadow-lg shadow-stone-900/20 transition-transform hover:bg-black active:scale-95 dark:bg-white dark:text-graphite dark:shadow-none dark:hover:bg-fog/90"
+        >
+          {isRunning ? (
+            <>
+              <Pause size={20} fill="currentColor" /> 暂停
+            </>
+          ) : (
+            <>
+              <Play size={20} fill="currentColor" /> 开始
+            </>
+          )}
+        </button>
+
+        {/* 次要按钮：浅灰(浅色) / 半透明白(暗色) */}
+        <button
+          type="button"
+          onClick={reset}
+          className="col-span-1 flex h-14 items-center justify-center gap-2 rounded-2xl bg-stone-100 font-bold text-stone-700 transition-colors hover:bg-stone-200 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
+        >
+          <RotateCcw size={20} /> 重置
+        </button>
+      </div>
+    </ThemedCard>
   )
 }
 
-type TimerDisplayProps = {
-  formattedTime: string
-  isRunning: boolean
-}
-
-const TimerDisplay = ({ formattedTime, isRunning }: TimerDisplayProps) => (
-  <div className="relative flex h-64 items-center justify-center overflow-hidden rounded-[28px] border border-white/5 bg-black/60">
-    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent)]" />
-    <div className="relative flex flex-col items-center gap-2">
-      <p className="text-6xl font-semibold tabular-nums text-white drop-shadow-[0_5px_25px_rgba(0,0,0,0.55)]">
-        {formattedTime}
-      </p>
-      <span className="text-xs text-white/50">
-        {isRunning ? '沉浸中...' : '准备开始'}
-      </span>
-    </div>
-  </div>
-)
-
-const TimerProgressBar = ({ progressPercent }: { progressPercent: number }) => (
-  <div className="mb-4 h-2 w-full rounded-full bg-white/10">
-    <div
-      className="h-full rounded-full bg-white transition-all duration-500"
-      style={{ width: `${progressPercent}%` }}
-    />
-  </div>
-)
-
-type TimerControlsProps = {
-  isRunning: boolean
-  onToggle: () => void
-  onReset: () => void
-}
-
-const TimerControls = ({
-  isRunning,
-  onToggle,
-  onReset,
-}: TimerControlsProps) => (
-  <div className="grid grid-cols-2 gap-3">
-    <button
-      type="button"
-      onClick={onToggle}
-      className="flex items-center justify-center gap-2 rounded-2xl bg-white px-6 py-4 font-semibold text-graphite transition hover:bg-fog/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/60"
-    >
-      {isRunning ? (
-        <>
-          <Pause className="size-4" />
-          暂停
-        </>
-      ) : (
-        <>
-          <Play className="size-4" />
-          开始
-        </>
-      )}
-    </button>
-    <button
-      type="button"
-      onClick={onReset}
-      className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-6 py-4 font-semibold text-white transition hover:border-white/40 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/40"
-    >
-      <RefreshCw className="size-4" />
-      重置
-    </button>
-  </div>
-)
-
 export default Timer
-

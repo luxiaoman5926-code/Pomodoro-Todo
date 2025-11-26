@@ -1,108 +1,114 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Check, Plus, Trash2 } from 'lucide-react'
-import GlassPanel from './GlassPanel'
+import { CheckCircle2, Circle, Plus, Trash2 } from 'lucide-react'
+import ThemedCard from './ThemedCard'
 import type { Task } from '../types'
-
-const STORAGE_KEY = 'spark-tool.tasks'
-
-// safeParseTasks 防御性解析本地存储，忽略无效或被污染的数据
-const safeParseTasks = (raw: string | null): Task[] => {
-  if (!raw) return []
-  try {
-    const parsed = JSON.parse(raw) as Task[]
-    if (!Array.isArray(parsed)) return []
-    return parsed.filter(
-      (entry) =>
-        typeof entry === 'object' &&
-        entry !== null &&
-        typeof entry.title === 'string' &&
-        typeof entry.completed === 'boolean' &&
-        typeof entry.id === 'string',
-    )
-  } catch {
-    return []
-  }
-}
+import { supabase } from '../supabase'
 
 const TodoList = () => {
-  const [tasks, setTasks] = useState<Task[]>(() => {
-    if (typeof window === 'undefined') return []
-    return safeParseTasks(window.localStorage.getItem(STORAGE_KEY))
-  })
-  const [title, setTitle] = useState('')
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [text, setText] = useState('')
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks))
-  }, [tasks])
+    const fetchTodos = async () => {
+      const { data, error } = await supabase
+        .from('todos')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching todos:', error)
+      } else if (data) {
+        setTasks(data)
+      }
+    }
+
+    fetchTodos()
+  }, [])
 
   const completedCount = useMemo(
     () => tasks.filter((task) => task.completed).length,
     [tasks],
   )
 
-  // handleAddTask 负责创建新任务并复位输入框
-  const handleAddTask = (event: FormEvent<HTMLFormElement>) => {
+  const handleAddTask = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const nextTitle = title.trim()
-    if (!nextTitle) return
+    const nextText = text.trim()
+    if (!nextText) return
 
-    const newTask: Task = {
-      id: window.crypto?.randomUUID
-        ? window.crypto.randomUUID()
-        : `${Date.now()}`,
-      title: nextTitle,
-      completed: false,
+    const { data, error } = await supabase
+      .from('todos')
+      .insert([{ text: nextText }])
+      .select()
+
+    if (error) {
+      console.error('Error adding todo:', error)
+    } else if (data) {
+      setTasks((prev) => [data[0], ...prev])
+      setText('')
     }
-
-    setTasks((prev) => [newTask, ...prev])
-    setTitle('')
   }
 
-  // toggleTask 用来切换任务完成状态
-  const toggleTask = (taskId: string) => {
+  const toggleTask = async (taskId: string, currentCompleted: boolean) => {
     setTasks((prev) =>
       prev.map((task) =>
-        task.id === taskId ? { ...task, completed: !task.completed } : task,
+        task.id === taskId ? { ...task, completed: !currentCompleted } : task,
       ),
     )
+
+    const { error } = await supabase
+      .from('todos')
+      .update({ completed: !currentCompleted })
+      .eq('id', taskId)
+
+    if (error) {
+      console.error('Error updating todo:', error)
+      setTasks((prev) =>
+        prev.map((task) =>
+          task.id === taskId ? { ...task, completed: currentCompleted } : task,
+        ),
+      )
+    }
   }
 
-  // deleteTask 从列表中移除对应任务
-  const deleteTask = (taskId: string) => {
+  const deleteTask = async (taskId: string) => {
+    const previousTasks = tasks
     setTasks((prev) => prev.filter((task) => task.id !== taskId))
+
+    const { error } = await supabase.from('todos').delete().eq('id', taskId)
+
+    if (error) {
+      console.error('Error deleting todo:', error)
+      setTasks(previousTasks)
+    }
   }
 
   return (
-    <GlassPanel
+    <ThemedCard
       label="待办事项"
       title="专注目标"
       meta={`${completedCount}/${tasks.length || 0} 已完成`}
-      className="bg-gradient-to-b from-ash/50 to-ash/10"
     >
-      <form
-        onSubmit={handleAddTask}
-        className="flex flex-col gap-3 rounded-2xl border border-white/5 bg-white/5 p-4 sm:flex-row sm:items-center"
-      >
+      {/* 输入框 */}
+      <form onSubmit={handleAddTask} className="group relative mb-6">
         <input
-          className="flex-1 rounded-xl border border-white/0 bg-transparent px-3 py-2 text-base text-white placeholder:text-white/40 focus:border-white/40 focus:outline-none"
+          className="h-14 w-full rounded-2xl border border-stone-200 bg-stone-50 pl-5 pr-24 text-stone-800 placeholder:text-stone-400 focus:border-stone-400 focus:outline-none focus:ring-4 focus:ring-stone-100 dark:border-white/5 dark:bg-white/5 dark:text-white dark:placeholder:text-white/40 dark:focus:border-white/40 dark:focus:ring-white/10"
           placeholder="输入下一项任务..."
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
+          value={text}
+          onChange={(event) => setText(event.target.value)}
         />
         <button
           type="submit"
-          className="flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-graphite transition hover:bg-fog/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/60"
+          className="absolute bottom-2 right-2 top-2 flex items-center gap-1 rounded-xl border border-stone-200 bg-white px-4 text-sm font-bold text-stone-900 shadow-sm transition-colors hover:bg-stone-50 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
         >
-          <Plus className="size-4" />
-          添加
+          <Plus size={16} /> 添加
         </button>
       </form>
 
-      <div className="flex flex-col gap-3">
+      {/* 列表 */}
+      <div className="custom-scrollbar flex-1 space-y-3 overflow-y-auto pr-2">
         {tasks.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-white/10 bg-white/5 px-4 py-8 text-center text-sm text-white/50">
+          <p className="py-8 text-center text-sm text-stone-400 dark:text-white/50">
             暂无任务，写下第一件想完成的事情吧。
           </p>
         ) : (
@@ -110,56 +116,64 @@ const TodoList = () => {
             <TaskItem
               key={task.id}
               task={task}
-              onToggle={toggleTask}
-              onDelete={deleteTask}
+              onToggle={() => toggleTask(task.id, task.completed)}
+              onDelete={() => deleteTask(task.id)}
             />
           ))
         )}
       </div>
-    </GlassPanel>
+    </ThemedCard>
   )
 }
 
 type TaskItemProps = {
   task: Task
-  onToggle: (taskId: string) => void
-  onDelete: (taskId: string) => void
+  onToggle: () => void
+  onDelete: () => void
 }
 
 const TaskItem = ({ task, onToggle, onDelete }: TaskItemProps) => (
-  <div className="group flex items-center gap-3 rounded-2xl border border-white/5 bg-white/5 px-4 py-3 transition hover:border-white/30">
-    <button
-      type="button"
-      onClick={() => onToggle(task.id)}
-      className="flex flex-1 items-center gap-3 text-left"
+  <div
+    className={`group flex items-center justify-between rounded-2xl border p-4 transition-all ${
+      task.completed
+        ? 'border-transparent bg-stone-50 opacity-60 hover:opacity-100 dark:bg-white/5'
+        : 'cursor-pointer border-stone-100 bg-white hover:border-stone-300 hover:shadow-md dark:border-white/5 dark:bg-white/5 dark:hover:border-white/30'
+    }`}
+  >
+    <div
+      className="flex flex-1 items-center gap-3"
+      onClick={onToggle}
+      onKeyDown={(e) => e.key === 'Enter' && onToggle()}
+      role="button"
+      tabIndex={0}
     >
+      {task.completed ? (
+        <CheckCircle2
+          className="text-stone-900 dark:text-white"
+          fill="transparent"
+        />
+      ) : (
+        <Circle className="text-stone-300 transition-colors group-hover:text-stone-500 dark:text-white/40 dark:group-hover:text-white" />
+      )}
       <span
-        className={`flex size-6 items-center justify-center rounded-full border transition ${
+        className={`font-medium transition ${
           task.completed
-            ? 'border-white bg-white text-graphite'
-            : 'border-white/40 text-transparent'
+            ? 'text-stone-400 line-through decoration-stone-300 dark:text-white/40 dark:decoration-white/40'
+            : 'text-stone-700 dark:text-white'
         }`}
       >
-        <Check className="size-3.5" />
+        {task.text}
       </span>
-      <span
-        className={`text-base text-white transition ${
-          task.completed ? 'text-white/40 line-through' : ''
-        }`}
-      >
-        {task.title}
-      </span>
-    </button>
+    </div>
     <button
       type="button"
-      onClick={() => onDelete(task.id)}
-      className="rounded-full border border-transparent p-2 text-white/50 transition hover:border-white/10 hover:bg-white/5 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/30"
+      onClick={onDelete}
+      className="text-stone-300 transition-colors hover:text-red-500 dark:text-white/50 dark:hover:text-white"
       aria-label="删除任务"
     >
-      <Trash2 className="size-4" />
+      <Trash2 size={18} />
     </button>
   </div>
 )
 
 export default TodoList
-
