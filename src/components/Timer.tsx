@@ -1,10 +1,10 @@
 import { Pause, Play, RotateCcw } from 'lucide-react'
 import { usePomodoro } from '../hooks/usePomodoro'
+import NoisePlayer from './NoisePlayer'
 import ThemedCard from './ThemedCard'
 
 const Timer = () => {
-  const { formattedTime, isRunning, progress, toggle, reset } =
-    usePomodoro()
+  const { formattedTime, isRunning, progress, toggle, reset } = usePomodoro()
 
   return (
     <ThemedCard
@@ -23,6 +23,9 @@ const Timer = () => {
           {isRunning ? '沉浸中...' : '准备开始'}
         </p>
       </div>
+
+      {/* 白噪声播放器 */}
+      <NoisePlayer isRunning={isRunning} />
 
       {/* 进度条 */}
       <div className="mb-8 h-2 w-full overflow-hidden rounded-full bg-stone-100 dark:bg-white/10">
