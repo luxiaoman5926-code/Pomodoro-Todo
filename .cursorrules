@@ -2,9 +2,10 @@
 - Framework: React (Vite)
 - Language: TypeScript
 - Styling: Tailwind CSS
-- Icons: Lucide React
+- Icons: @phosphor-icons/react
 - Backend/Database: Supabase
 - State Management: React Hooks + Context API (PomodoroContext)
+- PWA: vite-plugin-pwa
 
 # Code Style
 - Components: Must use Functional Components.
@@ -20,7 +21,7 @@
 # Project Structure
 ```
 src/
-├── App.tsx                 # 主应用布局，集成 PomodoroProvider
+├── App.tsx                 # 主应用布局，集成 PomodoroProvider，路由管理
 ├── main.tsx                # 应用入口
 ├── index.css               # 全局样式 (Tailwind)
 ├── supabase.ts             # Supabase 客户端初始化
@@ -32,61 +33,112 @@ src/
 │   ├── NoisePlayer.tsx     # 白噪声播放器
 │   ├── ThemedCard.tsx      # 主题卡片容器
 │   ├── Timer.tsx           # 番茄钟计时器
-│   ├── TodoList.tsx        # 待办事项列表
-│   ├── TomatoProgress.tsx  # 番茄进度图标 (0-4)
-│   └── UserMenu.tsx        # 用户菜单
+│   ├── TodoList.tsx        # 待办事项列表 (增强版：标签、优先级)
+│   ├── TomatoProgress.tsx  # 番茄进度图标
+│   ├── UserMenu.tsx        # 用户菜单
+│   ├── Statistics.tsx      # 统计页面入口
+│   ├── Heatmap.tsx         # 专注热力图
+│   ├── ReportCard.tsx      # 数据报表卡片
+│   ├── TaskHistory.tsx     # 历史任务列表
+│   ├── Transfer.tsx        # 跨平台传输页面
+│   └── Settings.tsx        # 个性化设置页面
 └── hooks/                  # 自定义 Hooks
     ├── useAuth.ts          # 认证状态管理
     ├── usePomodoro.ts      # 番茄钟核心逻辑
-    ├── usePomodoroContext.tsx  # 番茄钟共享状态 (Context)
-    └── useTheme.ts         # 主题切换
+    ├── usePomodoroContext.tsx  # 全局状态 (Context)
+    ├── useTheme.ts         # 主题切换
+    ├── useStatistics.ts    # 统计数据获取
+    ├── useTransfers.ts     # 传输/文件上传逻辑
+    ├── useSettings.ts      # 用户设置管理
+    ├── useNotifications.ts # 桌面通知管理
+    └── useKeyboardShortcuts.ts # 快捷键管理
 ```
 
 # Core Types (src/types.ts)
-- `Task`: 待办任务 (id, text, completed, pomodoros)
+- `Task`: 待办任务 (id, text, completed, pomodoros, tags, priority, estimated_pomodoros)
 - `PomodoroPhase`: 番茄钟阶段 ('focus' | 'shortBreak' | 'longBreak')
-- `PomodoroConfig`: 番茄钟配置 (各阶段时长、长休息前循环数)
-- `AuthState` / `AuthContextType`: 认证相关类型
+- `PomodoroConfig`: 番茄钟配置
+- `UserSettings`: 用户个性化配置 (durations, auto_start, white_noise)
+- `TransferItem`: 传输内容 (text, file, metadata)
+- `ReportData`: 统计报表数据
 
 # Pomodoro Timer Rules
-- **专注阶段**: 25 分钟
-- **短休息**: 5 分钟
-- **长休息**: 20 分钟 (每完成 4 个番茄钟后触发)
-- **循环规则**: 专注 → 短休息 → 专注 → 短休息 → 专注 → 短休息 → 专注 → 长休息 → 重复
+- **Default Durations**: 专注 25min, 短休息 5min, 长休息 20min (可配置).
+- **Cycle**: Focus → Short Break → Focus → Short Break → Focus → Short Break → Focus → Long Break.
+- **Auto Start**: Configurable via User Settings.
 
 # State Sharing Pattern
-- `PomodoroContext` 用于 Timer 和 TodoList 之间共享状态
-- `selectedTask`: 当前选中专注的任务
-- `onPomodoroComplete`: 番茄钟完成时的回调，自动更新任务的番茄数
-- 任务的 `pomodoros` 字段记录已完成的番茄钟数量 (0-4)
+- `PomodoroContext` shares state across Timer, TodoList, Settings, etc.
+- `settings`: Global user preferences.
+- `selectedTask`: Currently focused task.
+- `onPomodoroComplete`: Callback to update task progress.
 
 # Vibe & UI Preferences
 - Aesthetic: Minimalist, clean, modern.
-- Visual Language: Extensive use of rounded corners (`rounded-2xl`, `rounded-full`) and soft shadows.
+- Visual Language: Rounded corners (`rounded-2xl`), soft shadows, consistent iconography (Phosphor Icons).
 - Color Themes:
-  - 专注阶段: stone 色系 (深色主题)
-  - 短休息: emerald 色系 (绿色)
-  - 长休息: amber 色系 (琥珀色)
-- Theming: Support both Light and Dark modes using Tailwind's `dark:` modifier and custom color palettes.
-- Responsive Design: Mobile-first approach. Grid layout on larger screens (`md:grid-cols-2`).
+  - Focus: Stone (Dark)
+  - Short Break: Emerald (Green)
+  - Long Break: Amber (Orange)
+- Theming: Dark/Light mode support.
+- Layout: Responsive Grid, Tab-based navigation for mobile/desktop.
 
 # Development Guidelines
-- Error Handling: Always implement error handling for async operations (Supabase API calls).
-- Optimistic Updates: Update local state first, then sync to database, rollback on error.
-- User Feedback: Provide visual feedback (loading states, selected states, progress indicators).
-- Imports Order: 1. React/External Libs, 2. Internal Components, 3. Hooks/Utils/Types.
-- Clean Code: Remove unused variables and imports before committing.
-- Database: Supabase `todos` table requires `pomodoros` column (INTEGER DEFAULT 0).
+- **Performance**: Use `React.lazy` and `Suspense` for non-critical pages (Statistics, Transfer, Settings).
+- **Error Handling**: Implement error handling for Supabase operations.
+- **Optimistic Updates**: Update UI immediately, then sync with DB.
+- **Database**: 
+  - Use Supabase RLS (Row Level Security) for all tables.
+  - Use Supabase Storage for file transfers.
 
 # Database Schema (Supabase)
+
 ```sql
--- todos 表结构
+-- todos: 任务表
 CREATE TABLE todos (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY,
   text TEXT NOT NULL,
   completed BOOLEAN DEFAULT FALSE,
   pomodoros INTEGER DEFAULT 0,
+  tags TEXT[] DEFAULT '{}',
+  priority TEXT CHECK (priority IN ('low', 'medium', 'high')),
+  estimated_pomodoros INTEGER DEFAULT 1,
   user_id UUID REFERENCES auth.users(id),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ
+);
+
+-- pomodoro_sessions: 专注记录
+CREATE TABLE pomodoro_sessions (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id),
+  task_id UUID,
+  date DATE,
+  duration_seconds INTEGER,
+  phase TEXT,
+  created_at TIMESTAMPTZ
+);
+
+-- user_settings: 用户设置
+CREATE TABLE user_settings (
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id),
+  focus_duration INTEGER,
+  short_break_duration INTEGER,
+  long_break_duration INTEGER,
+  auto_start_focus BOOLEAN,
+  auto_start_break BOOLEAN,
+  white_noise_type TEXT,
+  white_noise_volume FLOAT,
+  updated_at TIMESTAMPTZ
+);
+
+-- transfers: 传输内容
+CREATE TABLE transfers (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id),
+  type TEXT, -- text, image, video, audio, document
+  content TEXT, -- text content or storage path
+  metadata JSONB,
+  created_at TIMESTAMPTZ
 );
 ```
