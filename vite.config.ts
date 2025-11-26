@@ -11,23 +11,19 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      includeAssets: ['icon.svg'],
       manifest: {
         name: 'MyFocus',
         short_name: 'Focus',
         description: 'A Pomodoro Timer and Todo List App',
-        theme_color: '#ffffff',
+        theme_color: '#ef4444',
         background_color: '#ffffff',
         icons: [
           {
-            src: 'icon.png',
-            sizes: '192x192',
-            type: 'image/png',
-          },
-          {
-            src: 'icon.png',
-            sizes: '512x512',
-            type: 'image/png',
+            src: 'icon.svg',
+            sizes: 'any',
+            type: 'image/svg+xml',
+            purpose: 'any maskable',
           },
         ],
       },
