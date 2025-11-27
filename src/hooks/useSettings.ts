@@ -75,6 +75,7 @@ export const useSettings = (userId: string | null) => {
 
     if (error) {
       console.error('Error updating settings:', error)
+      console.error('Failed payload:', newSettings)
       // 如果出错，重新获取以回滚
       fetchSettings()
     }
