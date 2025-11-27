@@ -904,7 +904,7 @@ const TaskItem = ({ task, isSelected, onToggle, onDelete, onSelect, onUpdate, tr
     <div
       className={`group relative flex flex-col gap-1 rounded-xl border px-3 py-2.5 transition-all ${
         isSelected
-          ? 'border-amber-300 bg-amber-50 ring-2 ring-amber-200 dark:border-amber-500/50 dark:bg-amber-500/10 dark:ring-amber-500/30'
+          ? 'border-amber-400 bg-amber-50 ring-1 ring-amber-400 dark:border-amber-500 dark:bg-amber-500/10 dark:ring-amber-500'
           : task.completed
           ? 'border-stone-200 bg-stone-50 opacity-60 hover:opacity-100 dark:border-white/5 dark:bg-white/5'
           : `border-stone-200 bg-white hover:border-stone-300 hover:shadow-md dark:border-white/10 dark:bg-ash dark:hover:border-white/20 dark:hover:bg-ash/80 border-l-[3px] ${priorityBorderClass}`
