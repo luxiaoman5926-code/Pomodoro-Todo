@@ -1,3 +1,5 @@
+# Project: Pomodoro Focus Workbench
+
 # Technical Stack
 - Framework: React (Vite)
 - Language: TypeScript
@@ -12,133 +14,85 @@
 - State: Must use React Hooks (useState, useEffect, useMemo, useCallback, useRef, etc.).
 - Styling: Use Tailwind CSS utility classes exclusively. Avoid creating new CSS files or using inline styles unless absolutely necessary.
 - Naming Conventions:
-  - Components & Files: PascalCase (e.g., `TodoList.tsx`, `ThemedCard.tsx`, `TomatoProgress.tsx`).
+  - Components & Files: PascalCase (e.g., `TodoList.tsx`, `ThemedCard.tsx`, `Timer.tsx`).
   - Logic/Hooks/Utils: camelCase (e.g., `usePomodoro.ts`, `supabase.ts`).
   - Context Hooks: camelCase with Context suffix (e.g., `usePomodoroContext.tsx`).
-  - Constants: UPPER_SNAKE_CASE (e.g., `DEFAULT_CONFIG`, `PHASE_LABELS`).
+  - Constants: UPPER_SNAKE_CASE (e.g., `DEFAULT_CONFIG`, `PHASE_STYLES`).
 - Types: Explicitly define interfaces/types for props and data structures (refer to `src/types.ts`).
+
+# Design System (Material Design 3 Inspired)
+- **Aesthetic**: Modern, clean, spacious, "Google-like".
+- **Shapes**: Generous rounded corners (`rounded-3xl` for cards, `rounded-full` for buttons/inputs/pills).
+- **Typography**: Large, bold headings (`text-5xl`, `text-3xl`), legible body text (`text-base`), readable inputs (`text-lg`).
+- **Visuals**: 
+  - Circular Timer Ring (SVG) with breathing animation (`animate-pulse-slow`).
+  - Soft shadows (`shadow-xl`, `shadow-stone-200/50`).
+  - Minimalist color palette: Stone (Base), Amber (Focus), Emerald (Short Break), Amber/Orange (Long Break).
+- **Interactions**: Smooth transitions, hover effects (scale/lift), drag-and-drop for files.
 
 # Project Structure
 ```
 src/
-├── App.tsx                 # 主应用布局，集成 PomodoroProvider，路由管理
-├── main.tsx                # 应用入口
-├── index.css               # 全局样式 (Tailwind)
-├── supabase.ts             # Supabase 客户端初始化
-├── types.ts                # 共享 TypeScript 类型定义
-├── assets/                 # 静态资源
-├── components/             # UI 组件
-│   ├── InstallPrompt.tsx   # PWA 安装提示
-│   ├── LoginPage.tsx       # 登录页面
-│   ├── NoisePlayer.tsx     # 白噪声播放器
-│   ├── ThemedCard.tsx      # 主题卡片容器
-│   ├── Timer.tsx           # 番茄钟计时器
-│   ├── TodoList.tsx        # 待办事项列表 (增强版：标签、优先级)
-│   ├── TomatoProgress.tsx  # 番茄进度图标
-│   ├── UserMenu.tsx        # 用户菜单
-│   ├── Statistics.tsx      # 统计页面入口
-│   ├── Heatmap.tsx         # 专注热力图
-│   ├── ReportCard.tsx      # 数据报表卡片
-│   ├── TaskHistory.tsx     # 历史任务列表
-│   ├── Transfer.tsx        # 跨平台传输页面
-│   └── Settings.tsx        # 个性化设置页面
-└── hooks/                  # 自定义 Hooks
-    ├── useAuth.ts          # 认证状态管理
-    ├── usePomodoro.ts      # 番茄钟核心逻辑
-    ├── usePomodoroContext.tsx  # 全局状态 (Context)
-    ├── useTheme.ts         # 主题切换
-    ├── useStatistics.ts    # 统计数据获取
-    ├── useTransfers.ts     # 传输/文件上传逻辑
-    ├── useSettings.ts      # 用户设置管理
-    ├── useNotifications.ts # 桌面通知管理
-    └── useKeyboardShortcuts.ts # 快捷键管理
+├── App.tsx                 # Main Layout (Grid: Timer | TodoList)
+├── main.tsx                # Entry Point
+├── index.css               # Global Styles (Tailwind + Scrollbar)
+├── supabase.ts             # Supabase Client
+├── types.ts                # Shared Types
+├── assets/                 # Static Assets
+├── components/             # UI Components
+│   ├── InstallPrompt.tsx   # PWA Install
+│   ├── LoginPage.tsx       # Auth Page
+│   ├── NoisePlayer.tsx     # White Noise (Currently hidden)
+│   ├── ThemedCard.tsx      # Standard Card Container
+│   ├── Timer.tsx           # Circular Pomodoro Timer
+│   ├── TodoList.tsx        # Advanced Task List (Subtasks, Tags, Due Date)
+│   ├── TomatoProgress.tsx  # Progress Icon
+│   ├── UserMenu.tsx        # User Profile
+│   ├── Statistics.tsx      # Stats Dashboard
+│   ├── Heatmap.tsx         # Focus Heatmap
+│   ├── ReportCard.tsx      # Stats Report
+│   ├── TaskHistory.tsx     # Completed Tasks
+│   ├── Transfer.tsx        # Cross-device File Transfer
+│   └── Settings.tsx        # User Preferences
+└── hooks/                  # Custom Hooks
+    ├── useAuth.ts          # Authentication
+    ├── usePomodoro.ts      # Timer Logic
+    ├── usePomodoroContext.tsx  # Global Context
+    ├── useTheme.ts         # Dark/Light Mode
+    ├── useStatistics.ts    # Stats Data Fetching (Optimized)
+    ├── useTransfers.ts     # File Transfer Logic (Optimized)
+    ├── useSettings.ts      # Settings Management
+    ├── useNotifications.ts # Browser Notifications
+    └── useKeyboardShortcuts.ts # Hotkeys
 ```
-
-# Core Types (src/types.ts)
-- `Task`: 待办任务 (id, text, completed, pomodoros, tags, priority, estimated_pomodoros)
-- `PomodoroPhase`: 番茄钟阶段 ('focus' | 'shortBreak' | 'longBreak')
-- `PomodoroConfig`: 番茄钟配置
-- `UserSettings`: 用户个性化配置 (durations, auto_start, white_noise)
-- `TransferItem`: 传输内容 (text, file, metadata)
-- `ReportData`: 统计报表数据
-
-# Pomodoro Timer Rules
-- **Default Durations**: 专注 25min, 短休息 5min, 长休息 20min (可配置).
-- **Cycle**: Focus → Short Break → Focus → Short Break → Focus → Short Break → Focus → Long Break.
-- **Auto Start**: Configurable via User Settings.
-
-# State Sharing Pattern
-- `PomodoroContext` shares state across Timer, TodoList, Settings, etc.
-- `settings`: Global user preferences.
-- `selectedTask`: Currently focused task.
-- `onPomodoroComplete`: Callback to update task progress.
-
-# Vibe & UI Preferences
-- Aesthetic: Minimalist, clean, modern.
-- Visual Language: Rounded corners (`rounded-2xl`), soft shadows, consistent iconography (Phosphor Icons).
-- Color Themes:
-  - Focus: Stone (Dark)
-  - Short Break: Emerald (Green)
-  - Long Break: Amber (Orange)
-- Theming: Dark/Light mode support.
-- Layout: Responsive Grid, Tab-based navigation for mobile/desktop.
-
-# Development Guidelines
-- **Performance**: Use `React.lazy` and `Suspense` for non-critical pages (Statistics, Transfer, Settings).
-- **Error Handling**: Implement error handling for Supabase operations.
-- **Optimistic Updates**: Update UI immediately, then sync with DB.
-- **Database**: 
-  - Use Supabase RLS (Row Level Security) for all tables.
-  - Use Supabase Storage for file transfers.
 
 # Database Schema (Supabase)
 
-```sql
--- todos: 任务表
-CREATE TABLE todos (
-  id UUID PRIMARY KEY,
-  text TEXT NOT NULL,
-  completed BOOLEAN DEFAULT FALSE,
-  pomodoros INTEGER DEFAULT 0,
-  tags TEXT[] DEFAULT '{}',
-  priority TEXT CHECK (priority IN ('low', 'medium', 'high')),
-  estimated_pomodoros INTEGER DEFAULT 1,
-  user_id UUID REFERENCES auth.users(id),
-  created_at TIMESTAMPTZ,
-  completed_at TIMESTAMPTZ
-);
+## Tables
+- **todos**: 
+  - `id` (UUID), `text`, `completed`, `pomodoros` (count), `tags` (array), `priority` (low/med/high), `estimated_time` (int), `due_date` (timestamp), `subtasks` (jsonb), `transfer_ids` (array), `user_id`, `created_at`, `completed_at`.
+- **pomodoro_sessions**: 
+  - `id` (UUID), `user_id`, `task_id`, `date`, `duration_seconds`, `phase`, `created_at`.
+- **user_settings**: 
+  - `user_id`, `focus_duration`, `short_break_duration`, `long_break_duration`, `auto_start_focus`, `auto_start_break`, `tag_color_mode`.
+- **transfers**: 
+  - `id` (UUID), `user_id`, `type` (text/image/video/audio/doc), `content` (path/text), `metadata` (jsonb), `created_at`.
 
--- pomodoro_sessions: 专注记录
-CREATE TABLE pomodoro_sessions (
-  id UUID PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id),
-  task_id UUID,
-  date DATE,
-  duration_seconds INTEGER,
-  phase TEXT,
-  created_at TIMESTAMPTZ
-);
+# Key Features
+1.  **Timer**: Circular visual progress, custom durations, phase switching, auto-start options.
+2.  **Todo List**: 
+    - Add tasks with Priority, Estimate, Tags, Due Date.
+    - Subtasks (editable, deletable).
+    - Link files from Transfer to Tasks.
+    - Drag & Drop sorting (planned/implied).
+3.  **Statistics**: Weekly/Monthly reports, Heatmap, efficiency analysis.
+4.  **Transfer**: Cross-platform file sharing via Supabase Storage with signed URLs.
+5.  **Theming**: System/Manual Dark Mode support.
 
--- user_settings: 用户设置
-CREATE TABLE user_settings (
-  user_id UUID PRIMARY KEY REFERENCES auth.users(id),
-  focus_duration INTEGER,
-  short_break_duration INTEGER,
-  long_break_duration INTEGER,
-  auto_start_focus BOOLEAN,
-  auto_start_break BOOLEAN,
-  white_noise_type TEXT,
-  white_noise_volume FLOAT,
-  updated_at TIMESTAMPTZ
-);
-
--- transfers: 传输内容
-CREATE TABLE transfers (
-  id UUID PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id),
-  type TEXT, -- text, image, video, audio, document
-  content TEXT, -- text content or storage path
-  metadata JSONB,
-  created_at TIMESTAMPTZ
-);
-```
+# Development Guidelines
+- **Performance**: 
+  - Use `React.lazy` for non-critical tabs (Statistics, Transfer, Settings).
+  - Batch API calls (e.g., `createSignedUrls` in Transfer).
+  - Consolidated queries (e.g., Statistics fetching).
+- **Database**: Use RPCs where possible for complex aggregations.
+- **UX**: Prioritize "Optimistic UI" updates for responsiveness.

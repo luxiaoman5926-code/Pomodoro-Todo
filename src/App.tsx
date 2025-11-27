@@ -46,40 +46,42 @@ const App = () => {
 
   // 已登录显示主应用
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-stone-50 p-8 text-stone-900 transition-colors duration-300 dark:bg-coal dark:text-fog">
-      <div className="w-full max-w-5xl">
+    <div className="flex min-h-screen w-full items-center justify-center bg-stone-50 p-4 sm:p-8 md:p-12 text-stone-900 transition-colors duration-300 dark:bg-stone-950 dark:text-stone-100">
+      <div className="w-full max-w-7xl">
         {/* 顶部 Header */}
-        <header className="mb-8 flex items-end justify-between px-2">
+        <header className="mb-12 flex flex-col sm:flex-row items-start sm:items-end justify-between px-4 gap-6">
           <div>
-            <p className="mb-1 text-xs font-bold tracking-widest text-stone-500 dark:text-mist">
-              深度专注
+            <p className="mb-2 text-sm font-bold tracking-widest text-stone-500 dark:text-stone-500 uppercase">
+              Deep Focus
             </p>
-            <h1 className="text-4xl font-extrabold tracking-tight text-stone-900 dark:text-fog">
-              番茄钟待办工作台
+            <h1 className="text-4xl md:text-5xl font-black tracking-tight text-stone-900 dark:text-white">
+              番茄钟工作台
             </h1>
           </div>
 
-          <div className="flex items-center gap-4">
-            <p className="hidden text-sm font-medium text-stone-400 dark:text-mist sm:block">
-              25 分钟冲刺 · 5 分钟休息
+          <div className="flex items-center gap-6 self-end sm:self-auto">
+            <p className="hidden text-base font-medium text-stone-400 dark:text-stone-600 lg:block">
+              保持专注 · 高效产出
             </p>
-            <button
-              onClick={toggleTheme}
-              className="flex size-10 items-center justify-center rounded-full bg-white text-stone-900 shadow-sm transition-transform hover:scale-105 active:scale-95 dark:bg-ash dark:text-fog dark:hover:bg-white/10"
-              aria-label="切换主题"
-            >
-              {theme === 'light' ? (
-                <Moon size={20} weight="duotone" />
-              ) : (
-                <Sun size={20} weight="duotone" />
-              )}
-            </button>
-            <UserMenu user={user} onSignOut={signOut} />
+            <div className="flex items-center gap-3">
+                <button
+                onClick={toggleTheme}
+                className="flex size-12 items-center justify-center rounded-full bg-white text-stone-900 shadow-sm transition-transform hover:scale-105 active:scale-95 dark:bg-stone-800 dark:text-stone-200 dark:hover:bg-stone-700"
+                aria-label="切换主题"
+                >
+                {theme === 'light' ? (
+                    <Moon size={22} weight="duotone" />
+                ) : (
+                    <Sun size={22} weight="duotone" />
+                )}
+                </button>
+                <UserMenu user={user} onSignOut={signOut} />
+            </div>
           </div>
         </header>
 
         {/* 导航标签 */}
-        <nav className="mb-6 flex gap-2 overflow-x-auto px-2 pb-2 sm:pb-0">
+        <nav className="mb-8 flex gap-3 overflow-x-auto px-2 pb-2 sm:pb-0">
           <TabButton
             active={activeTab === 'timer'}
             onClick={() => setActiveTab('timer')}
@@ -127,13 +129,13 @@ type TabButtonProps = {
 const TabButton = ({ active, onClick, icon: Icon, label }: TabButtonProps) => (
   <button
     onClick={onClick}
-    className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all ${
+    className={`flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold transition-all ${
       active
-        ? 'bg-stone-900 text-white shadow-md dark:bg-fog dark:text-coal'
-        : 'bg-white text-stone-600 hover:bg-stone-50 dark:bg-ash dark:text-mist dark:hover:bg-white/10'
+        ? 'bg-stone-900 text-white shadow-lg shadow-stone-900/10 dark:bg-white dark:text-stone-900'
+        : 'bg-white text-stone-600 hover:bg-stone-100 dark:bg-stone-900 dark:text-stone-400 dark:hover:bg-stone-800'
     }`}
   >
-    <Icon size={18} weight={active ? 'fill' : 'regular'} />
+    <Icon size={20} weight={active ? 'fill' : 'regular'} />
     {label}
   </button>
 )
@@ -209,7 +211,7 @@ const PomodoroProviderContent = ({ userId, activeTab }: PomodoroProviderContentP
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+    <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
       <Timer />
       <TodoList userId={userId} />
     </div>

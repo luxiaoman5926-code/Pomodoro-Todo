@@ -124,7 +124,7 @@ const Settings = () => {
         </div>
 
         {/* 白噪声 */}
-        <div className="mb-2">
+        {/* <div className="mb-2">
           <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-stone-700 dark:text-white/80">
             <SpeakerHigh size={18} weight="duotone" className="text-blue-500" />
             白噪声
@@ -166,7 +166,7 @@ const Settings = () => {
               className="h-2 w-full cursor-pointer appearance-none rounded-full bg-stone-200 accent-blue-500 dark:bg-white/10"
             />
           </div>
-        </div>
+        </div> */}
       </ThemedCard>
     </div>
   )
