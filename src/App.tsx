@@ -17,7 +17,7 @@ const Settings = lazy(() => import('./components/Settings'))
 
 const App = () => {
   const { theme, toggleTheme } = useTheme()
-  const { user, loading, signInWithGoogle, signInWithGithub, signOut } = useAuth()
+  const { user, loading, signInWithGoogle, signInWithGithub, signInWithEmail, signUpWithEmail, signOut } = useAuth()
   const [activeTab, setActiveTab] = useState<'timer' | 'statistics' | 'transfer' | 'settings'>('timer')
 
   // 加载中状态
@@ -26,7 +26,7 @@ const App = () => {
       <div className="flex min-h-screen w-full items-center justify-center bg-stone-50 dark:bg-coal">
         <div className="flex flex-col items-center gap-4">
           <Spinner size={40} weight="duotone" className="animate-spin text-amber-500" />
-          <p className="text-sm text-stone-500 dark:text-white/50">加载中...</p>
+          <p className="text-sm text-stone-500 dark:text-mist">加载中...</p>
         </div>
       </div>
     )
@@ -38,6 +38,8 @@ const App = () => {
       <LoginPage
         onGoogleSignIn={signInWithGoogle}
         onGithubSignIn={signInWithGithub}
+        onEmailSignIn={signInWithEmail}
+        onEmailSignUp={signUpWithEmail}
       />
     )
   }
@@ -49,21 +51,21 @@ const App = () => {
         {/* 顶部 Header */}
         <header className="mb-8 flex items-end justify-between px-2">
           <div>
-            <p className="mb-1 text-xs font-bold tracking-widest text-stone-500 dark:text-white/50">
+            <p className="mb-1 text-xs font-bold tracking-widest text-stone-500 dark:text-mist">
               深度专注
             </p>
-            <h1 className="text-4xl font-extrabold tracking-tight text-stone-900 dark:text-white">
+            <h1 className="text-4xl font-extrabold tracking-tight text-stone-900 dark:text-fog">
               番茄钟待办工作台
             </h1>
           </div>
 
           <div className="flex items-center gap-4">
-            <p className="hidden text-sm font-medium text-stone-400 dark:text-white/60 sm:block">
+            <p className="hidden text-sm font-medium text-stone-400 dark:text-mist sm:block">
               25 分钟冲刺 · 5 分钟休息
             </p>
             <button
               onClick={toggleTheme}
-              className="flex size-10 items-center justify-center rounded-full bg-white text-stone-900 shadow-sm transition-transform hover:scale-105 active:scale-95 dark:bg-white/10 dark:text-white"
+              className="flex size-10 items-center justify-center rounded-full bg-white text-stone-900 shadow-sm transition-transform hover:scale-105 active:scale-95 dark:bg-ash dark:text-fog dark:hover:bg-white/10"
               aria-label="切换主题"
             >
               {theme === 'light' ? (
@@ -127,8 +129,8 @@ const TabButton = ({ active, onClick, icon: Icon, label }: TabButtonProps) => (
     onClick={onClick}
     className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all ${
       active
-        ? 'bg-stone-900 text-white shadow-md dark:bg-white dark:text-graphite'
-        : 'bg-white text-stone-600 hover:bg-stone-50 dark:bg-white/10 dark:text-white/70 dark:hover:bg-white/20'
+        ? 'bg-stone-900 text-white shadow-md dark:bg-fog dark:text-coal'
+        : 'bg-white text-stone-600 hover:bg-stone-50 dark:bg-ash dark:text-mist dark:hover:bg-white/10'
     }`}
   >
     <Icon size={18} weight={active ? 'fill' : 'regular'} />
@@ -178,7 +180,7 @@ const PomodoroProviderContent = ({ userId, activeTab }: PomodoroProviderContentP
 
   const LoadingFallback = () => (
     <div className="flex items-center justify-center py-20">
-      <Spinner className="animate-spin text-stone-400" size={32} />
+      <Spinner className="animate-spin text-stone-400 dark:text-mist" size={32} />
     </div>
   )
 

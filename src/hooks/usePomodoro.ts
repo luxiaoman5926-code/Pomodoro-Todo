@@ -349,6 +349,26 @@ export const usePomodoro = (options: UsePomodoroOptions = {}) => {
     phaseStartSecondsRef.current = duration
   }, [getCurrentPhaseDuration])
 
+  // 调整剩余时间
+  const adjustSeconds = useCallback((delta: number) => {
+    setSecondsLeft((prev) => {
+      const newValue = Math.max(0, prev + delta)
+      // 同时更新起始时间参考，以保持进度条逻辑的合理性（视情况而定，这里选择更新）
+      // 这样调整时间后，进度条会重新计算
+      // phaseStartSecondsRef.current = Math.max(phaseStartSecondsRef.current, newValue)
+      return newValue
+    })
+  }, [])
+
+  // 设置具体时间
+  const setTime = useCallback((seconds: number) => {
+    setSecondsLeft(seconds)
+    // 如果设置的新时间比原来的总时长还长，更新总时长参考，避免进度条溢出
+    if (seconds > phaseStartSecondsRef.current) {
+      phaseStartSecondsRef.current = seconds
+    }
+  }, [])
+
   // 当阶段或任务变化时，重置开始时间
   useEffect(() => {
     phaseStartTimeRef.current = Date.now()
@@ -358,6 +378,8 @@ export const usePomodoro = (options: UsePomodoroOptions = {}) => {
   // 计算进度
   const progress = useMemo(() => {
     const elapsed = currentPhaseDuration - secondsLeft
+    // 如果手动调整时间导致剩余时间 > 原始总时长，进度条显示为0
+    if (secondsLeft > currentPhaseDuration) return 0
     return clamp(elapsed / currentPhaseDuration)
   }, [secondsLeft, currentPhaseDuration])
 
@@ -387,5 +409,7 @@ export const usePomodoro = (options: UsePomodoroOptions = {}) => {
     fullReset,
     skip,
     switchPhase,
+    adjustSeconds,
+    setTime,
   }
 }

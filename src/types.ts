@@ -2,17 +2,26 @@ import type { User, Session } from '@supabase/supabase-js'
 
 export type TaskPriority = 'low' | 'medium' | 'high'
 
+export type Subtask = {
+  id: string
+  text: string
+  completed: boolean
+}
+
 export type Task = {
   id: string
   text: string
   completed: boolean
   created_at?: string
-  completed_at?: string
+  completed_at?: string | null
   user_id?: string
   pomodoros?: number // 已完成的番茄钟数量 (0-4)
   tags?: string[]
   priority?: TaskPriority
-  estimated_pomodoros?: number
+  estimated_pomodoros?: number // @deprecated use estimated_time
+  estimated_time?: number // 预计时间（分钟）
+  subtasks?: Subtask[]
+  transfer_ids?: string[] // Linked transfer items
 }
 
 // Auth 相关类型
@@ -87,6 +96,7 @@ export type UserSettings = {
   white_noise_type: string
   white_noise_volume: number
   notification_sound: string
+  tag_color_mode: 'colorful' | 'monochrome'
   updated_at: string
 }
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { usePomodoroContext } from '../hooks/usePomodoroContext'
-import { Clock, Play, SpeakerHigh } from '@phosphor-icons/react'
+import { Clock, Play, SpeakerHigh, Palette } from '@phosphor-icons/react'
 import ThemedCard from './ThemedCard'
 
 const Settings = () => {
@@ -57,6 +57,41 @@ const Settings = () => {
                 className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-medium text-stone-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-amber-500/50"
               />
             </div>
+          </div>
+        </div>
+
+        {/* 外观设置 */}
+        <div className="mb-8">
+          <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-stone-700 dark:text-white/80">
+            <Palette size={18} weight="duotone" className="text-purple-500" />
+            外观风格
+          </h3>
+          <div className="grid grid-cols-2 gap-4">
+             <div>
+               <label className="mb-2 block text-xs font-medium text-stone-500 dark:text-white/50">标签颜色模式</label>
+               <div className="flex rounded-xl bg-stone-100 p-1 dark:bg-white/5">
+                 <button
+                   onClick={() => handleChange('tag_color_mode', 'colorful')}
+                   className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-all ${
+                     localSettings.tag_color_mode !== 'monochrome' // Default or explicit 'colorful'
+                       ? 'bg-white text-stone-900 shadow-sm dark:bg-white/20 dark:text-white'
+                       : 'text-stone-500 hover:text-stone-700 dark:text-white/40 dark:hover:text-white/70'
+                   }`}
+                 >
+                   彩色
+                 </button>
+                 <button
+                   onClick={() => handleChange('tag_color_mode', 'monochrome')}
+                   className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-all ${
+                     localSettings.tag_color_mode === 'monochrome'
+                       ? 'bg-white text-stone-900 shadow-sm dark:bg-white/20 dark:text-white'
+                       : 'text-stone-500 hover:text-stone-700 dark:text-white/40 dark:hover:text-white/70'
+                   }`}
+                 >
+                   黑白
+                 </button>
+               </div>
+             </div>
           </div>
         </div>
 
@@ -138,4 +173,3 @@ const Settings = () => {
 }
 
 export default Settings
-

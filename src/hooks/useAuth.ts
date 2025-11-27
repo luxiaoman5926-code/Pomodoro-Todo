@@ -173,6 +173,38 @@ export const useAuth = () => {
     }
   }, [])
 
+  // 邮箱登录
+  const signInWithEmail = useCallback(async (email: string, password: string) => {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+      if (error) throw error
+    } catch (error) {
+      console.error('邮箱登录失败:', error)
+      throw error
+    }
+  }, [])
+
+  // 邮箱注册
+  const signUpWithEmail = useCallback(async (email: string, password: string) => {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: window.location.origin,
+        },
+      })
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('邮箱注册失败:', error)
+      throw error
+    }
+  }, [])
+
   // 登出
   const signOut = useCallback(async () => {
     try {
@@ -188,6 +220,8 @@ export const useAuth = () => {
     ...authState,
     signInWithGoogle,
     signInWithGithub,
+    signInWithEmail,
+    signUpWithEmail,
     signOut,
   }
 }

@@ -5,7 +5,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['"Space Grotesk"', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['"Space Grotesk"', '"PingFang SC"', '"Microsoft YaHei"', '"Noto Sans SC"', 'sans-serif'],
       },
       colors: {
         // 保留 Stone 色系作为浅色模式基础
@@ -22,15 +22,16 @@ export default {
           900: '#1c1917',
           950: '#0c0a09',
         },
-        // 恢复原有暗色系配色，命名为 dark-*
-        coal: '#050505',
-        graphite: '#0f0f13',
-        ash: '#19191f',
-        fog: '#f5f5f5',
+        // Linear-style dark mode palette
+        coal: '#0F1115', // Base background
+        graphite: '#1C1E26', // Card background
+        ash: '#23252B', // Secondary background / borders
+        fog: '#F7F8F8', // Primary text
+        mist: '#8A8F98', // Secondary text
       },
       boxShadow: {
         card: '0 20px 40px -15px rgba(0,0,0,0.05)',
-        depth: '0 35px 120px rgba(0, 0, 0, 0.45)',
+        depth: '0 10px 30px -10px rgba(0, 0, 0, 0.5)',
       },
     },
   },

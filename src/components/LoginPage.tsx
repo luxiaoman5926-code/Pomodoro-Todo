@@ -1,14 +1,24 @@
 import { useState } from 'react'
-import { Github, Loader2, Timer } from 'lucide-react'
+import { GithubLogo, Spinner, Timer, Envelope, Lock, Eye, EyeSlash, ArrowRight } from '@phosphor-icons/react'
 
 type LoginPageProps = {
   onGoogleSignIn: () => Promise<void>
   onGithubSignIn: () => Promise<void>
+  onEmailSignIn: (email: string, password: string) => Promise<void>
+  onEmailSignUp: (email: string, password: string) => Promise<any>
 }
 
-const LoginPage = ({ onGoogleSignIn, onGithubSignIn }: LoginPageProps) => {
-  const [isLoading, setIsLoading] = useState<'google' | 'github' | null>(null)
+const LoginPage = ({ onGoogleSignIn, onGithubSignIn, onEmailSignIn, onEmailSignUp }: LoginPageProps) => {
+  const [isLoading, setIsLoading] = useState<'google' | 'github' | 'email' | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [isSignUp, setIsSignUp] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [verificationSent, setVerificationSent] = useState(false)
+  
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  })
 
   const handleGoogleSignIn = async () => {
     setIsLoading('google')
@@ -34,6 +44,64 @@ const LoginPage = ({ onGoogleSignIn, onGithubSignIn }: LoginPageProps) => {
     }
   }
 
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!formData.email || !formData.password) {
+      setError('请输入邮箱和密码')
+      return
+    }
+
+    setIsLoading('email')
+    setError(null)
+
+    try {
+      if (isSignUp) {
+        const data = await onEmailSignUp(formData.email, formData.password)
+        if (data?.user && !data?.session) {
+          setVerificationSent(true)
+          setFormData({ email: '', password: '' })
+        }
+      } else {
+        await onEmailSignIn(formData.email, formData.password)
+      }
+    } catch (err: any) {
+      console.error(err)
+      if (err.message === 'User already registered') {
+        setError('该邮箱已被注册，请直接登录')
+      } else if (err.message === 'Invalid login credentials') {
+        setError('邮箱或密码错误')
+      } else {
+        setError(err.message || (isSignUp ? '注册失败，请重试' : '登录失败，请重试'))
+      }
+    } finally {
+      setIsLoading(null)
+    }
+  }
+
+  if (verificationSent) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-stone-50 p-8 transition-colors duration-300 dark:bg-coal">
+        <div className="w-full max-w-md rounded-3xl border border-stone-200/50 bg-white/80 p-8 text-center shadow-xl shadow-stone-900/5 backdrop-blur-sm dark:border-white/5 dark:bg-white/5 dark:shadow-black/20">
+          <div className="mb-6 flex justify-center">
+            <div className="flex size-16 items-center justify-center rounded-full bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400">
+              <Envelope size={32} weight="duotone" />
+            </div>
+          </div>
+          <h2 className="mb-2 text-xl font-bold text-stone-900 dark:text-white">验证邮件已发送</h2>
+          <p className="mb-8 text-sm text-stone-500 dark:text-white/50">
+            我们已向您的邮箱发送了一封验证邮件，请查收并点击链接完成注册。
+          </p>
+          <button
+            onClick={() => setVerificationSent(false)}
+            className="text-sm font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+          >
+            返回登录
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-stone-50 p-8 transition-colors duration-300 dark:bg-coal">
       {/* 背景装饰 */}
@@ -47,7 +115,7 @@ const LoginPage = ({ onGoogleSignIn, onGithubSignIn }: LoginPageProps) => {
         <div className="mb-10 text-center">
           <div className="mb-6 inline-flex items-center justify-center">
             <div className="flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 shadow-xl shadow-red-500/30">
-              <Timer className="size-8 text-white" />
+              <Timer weight="duotone" className="size-8 text-white" />
             </div>
           </div>
           <h1 className="mb-2 text-3xl font-extrabold tracking-tight text-stone-900 dark:text-white">
@@ -61,10 +129,10 @@ const LoginPage = ({ onGoogleSignIn, onGithubSignIn }: LoginPageProps) => {
         {/* 登录卡片 */}
         <div className="rounded-3xl border border-stone-200/50 bg-white/80 p-8 shadow-xl shadow-stone-900/5 backdrop-blur-sm dark:border-white/5 dark:bg-white/5 dark:shadow-black/20">
           <h2 className="mb-2 text-center text-xl font-bold text-stone-900 dark:text-white">
-            欢迎回来
+            {isSignUp ? '创建新账户' : '欢迎回来'}
           </h2>
           <p className="mb-8 text-center text-sm text-stone-500 dark:text-white/50">
-            选择一种方式登录您的账户
+            {isSignUp ? '输入您的详细信息以开始使用' : '选择一种方式登录您的账户'}
           </p>
 
           {/* 错误提示 */}
@@ -74,16 +142,78 @@ const LoginPage = ({ onGoogleSignIn, onGithubSignIn }: LoginPageProps) => {
             </div>
           )}
 
+          {/* 邮箱表单 */}
+          <form onSubmit={handleEmailAuth} className="mb-8 space-y-4">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-4 text-stone-400 dark:text-white/30">
+                <Envelope size={20} />
+              </div>
+              <input
+                type="email"
+                placeholder="电子邮箱"
+                required
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full rounded-xl border border-stone-200 bg-white py-3 pl-11 pr-4 text-sm outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-500/20 dark:border-white/10 dark:bg-black/20 dark:text-white dark:focus:border-red-500"
+              />
+            </div>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-4 text-stone-400 dark:text-white/30">
+                <Lock size={20} />
+              </div>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="密码"
+                required
+                minLength={6}
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                className="w-full rounded-xl border border-stone-200 bg-white py-3 pl-11 pr-11 text-sm outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-500/20 dark:border-white/10 dark:bg-black/20 dark:text-white dark:focus:border-red-500"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 flex items-center pr-4 text-stone-400 hover:text-stone-600 dark:text-white/30 dark:hover:text-white/50"
+              >
+                {showPassword ? <EyeSlash size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading !== null}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 py-3 font-semibold text-white shadow-lg shadow-red-500/20 transition-all hover:shadow-red-500/40 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {isLoading === 'email' ? (
+                <Spinner className="size-5 animate-spin" />
+              ) : (
+                <>
+                  {isSignUp ? '注册账户' : '登录'}
+                  <ArrowRight weight="bold" />
+                </>
+              )}
+            </button>
+          </form>
+
+          <div className="relative mb-8 text-center">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-stone-200 dark:border-white/10" />
+            </div>
+            <span className="relative bg-white px-2 text-xs text-stone-400 dark:bg-[#2C2C2C] dark:text-white/40">
+              或者使用第三方账号
+            </span>
+          </div>
+
           {/* OAuth 按钮 */}
-          <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
             {/* Google 登录 */}
             <button
               onClick={handleGoogleSignIn}
               disabled={isLoading !== null}
-              className="group flex w-full items-center justify-center gap-3 rounded-2xl border border-stone-200 bg-white px-6 py-4 font-semibold text-stone-700 shadow-sm transition-all duration-200 hover:border-stone-300 hover:bg-stone-50 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:border-white/20 dark:hover:bg-white/10"
+              className="flex items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white p-3 text-sm font-medium text-stone-700 transition-all hover:bg-stone-50 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
             >
               {isLoading === 'google' ? (
-                <Loader2 className="size-5 animate-spin" />
+                <Spinner className="size-5 animate-spin" />
               ) : (
                 <svg className="size-5" viewBox="0 0 24 24">
                   <path
@@ -104,36 +234,42 @@ const LoginPage = ({ onGoogleSignIn, onGithubSignIn }: LoginPageProps) => {
                   />
                 </svg>
               )}
-              <span>使用 Google 登录</span>
+              <span>Google</span>
             </button>
 
             {/* GitHub 登录 */}
             <button
               onClick={handleGithubSignIn}
               disabled={isLoading !== null}
-              className="group flex w-full items-center justify-center gap-3 rounded-2xl bg-stone-900 px-6 py-4 font-semibold text-white shadow-sm transition-all duration-200 hover:bg-stone-800 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-stone-900 dark:hover:bg-stone-100"
+              className="flex items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white p-3 text-sm font-medium text-stone-700 transition-all hover:bg-stone-50 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
             >
               {isLoading === 'github' ? (
-                <Loader2 className="size-5 animate-spin" />
+                <Spinner className="size-5 animate-spin" />
               ) : (
-                <Github className="size-5" />
+                <GithubLogo className="size-5" weight="fill" />
               )}
-              <span>使用 GitHub 登录</span>
+              <span>GitHub</span>
             </button>
           </div>
 
-          {/* 分隔线 */}
-          <div className="my-8 flex items-center gap-4">
-            <div className="h-px flex-1 bg-stone-200 dark:bg-white/10" />
-            <span className="text-xs text-stone-400 dark:text-white/40">安全登录</span>
-            <div className="h-px flex-1 bg-stone-200 dark:bg-white/10" />
-          </div>
+          {/* 切换模式 */}
+          <p className="mt-8 text-center text-sm text-stone-500 dark:text-white/50">
+            {isSignUp ? '已有账号？' : '还没有账号？'}
+            <button
+              onClick={() => {
+                setIsSignUp(!isSignUp)
+                setError(null)
+                setFormData({ email: '', password: '' })
+              }}
+              className="ml-2 font-semibold text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+            >
+              {isSignUp ? '立即登录' : '免费注册'}
+            </button>
+          </p>
 
           {/* 说明文字 */}
-          <p className="text-center text-xs leading-relaxed text-stone-400 dark:text-white/40">
+          <p className="mt-8 text-center text-xs leading-relaxed text-stone-400 dark:text-white/40">
             登录即表示您同意我们的服务条款。
-            <br />
-            我们使用 OAuth 2.0 确保您的账户安全。
           </p>
         </div>
 
@@ -147,4 +283,3 @@ const LoginPage = ({ onGoogleSignIn, onGithubSignIn }: LoginPageProps) => {
 }
 
 export default LoginPage
-
