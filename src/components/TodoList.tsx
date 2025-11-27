@@ -22,6 +22,8 @@ import {
   Paperclip,
   Link as LinkIcon,
   File as FileIcon,
+  PencilSimple,
+  Check,
 } from '@phosphor-icons/react'
 import ThemedCard from './ThemedCard'
 import TomatoProgress from './TomatoProgress'
@@ -365,6 +367,86 @@ const TodoList = ({ userId }: TodoListProps) => {
     }
   }
 
+  // 重命名标签（更新所有包含该标签的任务）
+  const handleRenameTag = async (oldTag: string, newTag: string) => {
+    if (oldTag === newTag || !newTag.trim()) return
+    
+    // 找出所有包含该标签的任务
+    const tasksWithTag = tasks.filter(t => t.tags?.includes(oldTag))
+    
+    // 乐观更新本地状态
+    setTasks(prev => prev.map(task => {
+      if (task.tags?.includes(oldTag)) {
+        const updatedTags = task.tags.map(t => t === oldTag ? newTag : t)
+        return { ...task, tags: updatedTags }
+      }
+      return task
+    }))
+
+    // 同时更新新任务表单中的标签
+    if (newTags.includes(oldTag)) {
+      setNewTags(prev => prev.map(t => t === oldTag ? newTag : t))
+    }
+
+    // 更新筛选标签
+    if (filterTag === oldTag) {
+      setFilterTag(newTag)
+    }
+
+    // 批量更新数据库
+    for (const task of tasksWithTag) {
+      const updatedTags = task.tags?.map(t => t === oldTag ? newTag : t) || []
+      const { error } = await supabase
+        .from('todos')
+        .update({ tags: updatedTags })
+        .eq('id', task.id)
+        .eq('user_id', userId)
+
+      if (error) {
+        console.error('Error renaming tag:', error)
+      }
+    }
+  }
+
+  // 删除标签（从所有任务中移除该标签）
+  const handleDeleteTag = async (tagToDelete: string) => {
+    // 找出所有包含该标签的任务
+    const tasksWithTag = tasks.filter(t => t.tags?.includes(tagToDelete))
+    
+    // 乐观更新本地状态
+    setTasks(prev => prev.map(task => {
+      if (task.tags?.includes(tagToDelete)) {
+        const updatedTags = task.tags.filter(t => t !== tagToDelete)
+        return { ...task, tags: updatedTags }
+      }
+      return task
+    }))
+
+    // 同时更新新任务表单中的标签
+    if (newTags.includes(tagToDelete)) {
+      setNewTags(prev => prev.filter(t => t !== tagToDelete))
+    }
+
+    // 清除筛选
+    if (filterTag === tagToDelete) {
+      setFilterTag(null)
+    }
+
+    // 批量更新数据库
+    for (const task of tasksWithTag) {
+      const updatedTags = task.tags?.filter(t => t !== tagToDelete) || []
+      const { error } = await supabase
+        .from('todos')
+        .update({ tags: updatedTags })
+        .eq('id', task.id)
+        .eq('user_id', userId)
+
+      if (error) {
+        console.error('Error deleting tag:', error)
+      }
+    }
+  }
+
   // 标签建议：排除已选的
   const tagSuggestions = useMemo(() => {
     return allTags.filter(t => !newTags.includes(t) && t.toLowerCase().includes(newTag.toLowerCase()))
@@ -671,29 +753,21 @@ const TodoList = ({ userId }: TodoListProps) => {
           )}
         </div>
       )}
-      <SelectionModal
-        title="选择标签"
+      <TagManagementModal
         isOpen={showTagSelector}
         onClose={() => setShowTagSelector(false)}
-        items={allTags}
-        selectedIds={newTags}
-        onToggle={(tag) => {
+        allTags={allTags}
+        selectedTags={newTags}
+        onToggleTag={(tag) => {
             if (newTags.includes(tag)) {
                 setNewTags(newTags.filter(t => t !== tag))
             } else {
                 setNewTags([...newTags, tag])
             }
         }}
-        renderItem={(tag, isSelected) => {
-            const colorStyle = isColorfulTags ? getTagColor(tag) : { bg: 'bg-stone-100', text: 'text-stone-500' }
-            return (
-                <div className="flex items-center gap-2">
-                    <TagIcon size={16} className={colorStyle.text} weight={isSelected ? 'fill' : 'regular'} />
-                    <span className="text-sm font-medium">#{tag}</span>
-                </div>
-            )
-        }}
-        keyExtractor={(tag) => tag}
+        onRenameTag={handleRenameTag}
+        onDeleteTag={handleDeleteTag}
+        isColorfulTags={isColorfulTags}
       />
     </ThemedCard>
   )
@@ -1223,6 +1297,166 @@ const SelectionModal = <T,>({ title, isOpen, onClose, items, selectedIds, onTogg
                 )
             })}
          </div>
+      </div>
+    </div>
+  )
+}
+
+// 标签管理模态框 - 支持选择、编辑、删除标签
+type TagManagementModalProps = {
+  isOpen: boolean
+  onClose: () => void
+  allTags: string[]
+  selectedTags: string[]
+  onToggleTag: (tag: string) => void
+  onRenameTag: (oldTag: string, newTag: string) => void
+  onDeleteTag: (tag: string) => void
+  isColorfulTags: boolean
+}
+
+const TagManagementModal = ({ 
+  isOpen, 
+  onClose, 
+  allTags, 
+  selectedTags, 
+  onToggleTag, 
+  onRenameTag, 
+  onDeleteTag,
+  isColorfulTags 
+}: TagManagementModalProps) => {
+  const [editingTag, setEditingTag] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (editingTag && inputRef.current) {
+      inputRef.current.focus()
+      inputRef.current.select()
+    }
+  }, [editingTag])
+
+  const handleStartEdit = (tag: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setEditingTag(tag)
+    setEditValue(tag)
+  }
+
+  const handleSaveEdit = () => {
+    if (editingTag && editValue.trim() && editValue.trim() !== editingTag) {
+      onRenameTag(editingTag, editValue.trim())
+    }
+    setEditingTag(null)
+    setEditValue('')
+  }
+
+  const handleCancelEdit = () => {
+    setEditingTag(null)
+    setEditValue('')
+  }
+
+  const handleDelete = (tag: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (confirm(`确定要删除标签 "#${tag}" 吗？\n这将从所有任务中移除此标签。`)) {
+      onDeleteTag(tag)
+    }
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm p-4">
+      <div className="w-full max-w-sm rounded-xl bg-white p-4 shadow-xl dark:bg-stone-800 ring-1 ring-stone-900/5 animate-in fade-in zoom-in duration-200">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="font-bold text-stone-700 dark:text-white">管理标签</h3>
+          <button 
+            onClick={onClose} 
+            className="p-1 text-stone-400 hover:text-stone-600 dark:text-mist dark:hover:text-white"
+          >
+            <X size={16} />
+          </button>
+        </div>
+        
+        <p className="mb-3 text-xs text-stone-400 dark:text-mist">
+          点击选择 · 双击编辑 · 右侧按钮删除
+        </p>
+
+        <div className="max-h-[60vh] overflow-y-auto custom-scrollbar space-y-1">
+          {allTags.length === 0 ? (
+            <p className="text-center text-sm text-stone-400 py-4">暂无标签</p>
+          ) : (
+            allTags.map(tag => {
+              const colorStyle = isColorfulTags 
+                ? getTagColor(tag) 
+                : { bg: 'bg-stone-100 dark:bg-white/10', text: 'text-stone-500 dark:text-mist' }
+              const isSelected = selectedTags.includes(tag)
+              const isEditing = editingTag === tag
+
+              return (
+                <div
+                  key={tag}
+                  onClick={() => !isEditing && onToggleTag(tag)}
+                  onDoubleClick={(e) => handleStartEdit(tag, e)}
+                  className={`group cursor-pointer rounded-lg px-3 py-2 transition-colors flex items-center gap-2 ${
+                    isSelected
+                      ? 'bg-amber-50 text-amber-900 dark:bg-amber-500/20 dark:text-amber-100'
+                      : 'hover:bg-stone-50 dark:hover:bg-white/5 text-stone-700 dark:text-stone-300'
+                  }`}
+                >
+                  {isEditing ? (
+                    <div className="flex flex-1 items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      <TagIcon size={16} className={colorStyle.text} />
+                      <input
+                        ref={inputRef}
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSaveEdit()
+                          if (e.key === 'Escape') handleCancelEdit()
+                        }}
+                        onBlur={handleSaveEdit}
+                        className="flex-1 bg-transparent text-sm font-medium outline-none border-b border-amber-400 dark:border-amber-500"
+                      />
+                      <button
+                        onClick={handleSaveEdit}
+                        className="p-1 text-emerald-500 hover:text-emerald-600"
+                      >
+                        <Check size={14} weight="bold" />
+                      </button>
+                      <button
+                        onClick={handleCancelEdit}
+                        className="p-1 text-stone-400 hover:text-stone-600"
+                      >
+                        <X size={14} weight="bold" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <TagIcon size={16} className={colorStyle.text} weight={isSelected ? 'fill' : 'regular'} />
+                      <span className="flex-1 text-sm font-medium">#{tag}</span>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => handleStartEdit(tag, e)}
+                          className="p-1 text-stone-400 hover:text-blue-500 dark:text-mist dark:hover:text-blue-400"
+                          title="编辑标签"
+                        >
+                          <PencilSimple size={14} />
+                        </button>
+                        <button
+                          onClick={(e) => handleDelete(tag, e)}
+                          className="p-1 text-stone-400 hover:text-red-500 dark:text-mist dark:hover:text-red-400"
+                          title="删除标签"
+                        >
+                          <Trash size={14} />
+                        </button>
+                      </div>
+                      {isSelected && <CheckCircle weight="fill" className="text-amber-500" size={16} />}
+                    </>
+                  )}
+                </div>
+              )
+            })
+          )}
+        </div>
       </div>
     </div>
   )
