@@ -9,7 +9,7 @@ type TaskHistoryProps = {
 }
 
 const TaskHistory = ({ tasks, isLoading }: TaskHistoryProps) => {
-  const formatDate = (dateStr: string | undefined) => {
+  const formatDate = (dateStr: string | null | undefined) => {
     if (!dateStr) return '未知日期'
     const date = new Date(dateStr)
     return date.toLocaleDateString('zh-CN', {

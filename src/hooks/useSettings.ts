@@ -12,6 +12,7 @@ const DEFAULT_SETTINGS: Omit<UserSettings, 'user_id' | 'updated_at'> = {
   white_noise_type: 'rain',
   white_noise_volume: 0.5,
   notification_sound: 'default',
+  tag_color_mode: 'colorful',
 }
 
 export const useSettings = (userId: string | null) => {

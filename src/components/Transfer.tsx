@@ -103,7 +103,7 @@ const Transfer = ({ userId }: TransferProps) => {
 
   return (
     <div 
-      className="relative min-h-[calc(100vh-200px)] space-y-6"
+      className="relative min-h-[calc(100vh-200px)]"
       onDragEnter={handleDrag}
       onDragOver={handleDrag}
       onDragLeave={handleDrag}
@@ -124,13 +124,13 @@ const Transfer = ({ userId }: TransferProps) => {
       {/* 顶部操作区 */}
       <ThemedCard label="传输" title="跨设备同步" meta="文本、文件极速互传">
         {/* 输入框 */}
-        <form onSubmit={handleTextSubmit} className="mb-6 flex gap-2">
+        <form onSubmit={handleTextSubmit} className="mb-4 flex gap-2">
           <input
             type="text"
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="输入文本或粘贴链接..."
-            className="flex-1 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-white/10 dark:bg-white/5 dark:text-white"
+            className="flex-1 rounded-xl border border-stone-200 bg-stone-50 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-white/10 dark:bg-white/5 dark:text-white"
           />
           <button
             type="submit"
@@ -156,7 +156,7 @@ const Transfer = ({ userId }: TransferProps) => {
         </form>
 
         {/* 分类标签 */}
-        <div className="mb-6 flex flex-wrap gap-2">
+        <div className="mb-4 flex flex-wrap gap-2">
           {TYPE_TABS.map((tab) => (
             <button
               key={tab.id}
