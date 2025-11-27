@@ -51,7 +51,8 @@ export const useSettings = (userId: string | null) => {
           console.error('Error fetching settings:', error)
         }
       } else {
-        setSettings(data)
+        // 合并默认值，防止新字段（如 tag_color_mode）在旧数据中缺失
+        setSettings({ ...DEFAULT_SETTINGS, ...data })
       }
     } catch (error) {
       console.error('Error in fetchSettings:', error)
