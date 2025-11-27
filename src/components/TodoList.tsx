@@ -819,15 +819,22 @@ const TaskItem = ({ task, isSelected, onToggle, onDelete, onSelect, onUpdate, tr
     onUpdate({ transfer_ids: currentIds.filter(id => id !== transferId) })
   }
 
+  // 优先级左边框颜色
+  const priorityBorderClass = !isSelected && !task.completed ? {
+    high: 'border-l-red-500',
+    medium: 'border-l-amber-500',
+    low: 'border-l-blue-500',
+  }[priorityKey] : ''
+
   return (
     <div
-      className={`group relative flex flex-col gap-1 rounded-xl border-2 px-3 py-2.5 transition-all ${
+      className={`group relative flex flex-col gap-1 rounded-xl border px-3 py-2.5 transition-all ${
         isSelected
-          ? 'border-amber-300 bg-amber-50 dark:border-amber-500/50 dark:bg-amber-500/10'
+          ? 'border-amber-300 bg-amber-50 ring-2 ring-amber-200 dark:border-amber-500/50 dark:bg-amber-500/10 dark:ring-amber-500/30'
           : task.completed
-          ? 'border-transparent bg-stone-50 opacity-60 hover:opacity-100 dark:bg-white/5'
-          : 'border-stone-200 bg-white hover:border-stone-300 hover:shadow-md dark:border-white/5 dark:bg-ash dark:hover:border-white/10 dark:hover:bg-ash/80'
-      } ${isSelected ? '' : 'border-l-4 ' + (priorityStyle?.border?.replace('border', 'border-l') || 'border-l-stone-200')}`}
+          ? 'border-stone-200 bg-stone-50 opacity-60 hover:opacity-100 dark:border-white/5 dark:bg-white/5'
+          : `border-stone-200 bg-white hover:border-stone-300 hover:shadow-md dark:border-white/10 dark:bg-ash dark:hover:border-white/20 dark:hover:bg-ash/80 border-l-[3px] ${priorityBorderClass}`
+      }`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-1 items-start gap-2">
