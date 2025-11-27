@@ -218,9 +218,25 @@ const Transfer = ({ userId }: TransferProps) => {
                   {/* 信息栏 */}
                   <div className="flex items-center justify-between px-3 py-2">
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-medium text-stone-700 dark:text-white/90">
-                        {item.type === 'text' ? '纯文本' : item.metadata.name}
-                      </p>
+                        {editingId === item.id ? (
+                            <input
+                                autoFocus
+                                className="w-full rounded bg-white px-1 py-0.5 text-xs font-medium text-stone-700 outline-none ring-1 ring-blue-500 dark:bg-stone-800 dark:text-white"
+                                value={editName}
+                                onChange={(e) => setEditName(e.target.value)}
+                                onBlur={handleRename}
+                                onKeyDown={(e) => e.key === 'Enter' && handleRename()}
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                        ) : (
+                            <p 
+                                onDoubleClick={() => startRenaming(item)}
+                                className="truncate text-xs font-medium text-stone-700 dark:text-white/90 cursor-text select-none"
+                                title="双击重命名"
+                            >
+                                {item.type === 'text' ? '纯文本' : item.metadata.name}
+                            </p>
+                        )}
                       <p className="text-[10px] text-stone-400 dark:text-white/40">
                         {new Date(item.created_at).toLocaleDateString()} 
                         {item.metadata.size && ` · ${formatSize(item.metadata.size)}`}
