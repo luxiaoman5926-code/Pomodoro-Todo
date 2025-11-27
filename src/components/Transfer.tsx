@@ -38,12 +38,16 @@ const formatSize = (bytes?: number) => {
 }
 
 const Transfer = ({ userId }: TransferProps) => {
-  const { items, loading, uploading, sendText, uploadFile, deleteTransfer } = useTransfers(userId)
+  const { items, loading, uploading, sendText, uploadFile, deleteTransfer, renameTransfer } = useTransfers(userId)
   const [activeTab, setActiveTab] = useState<TransferType | 'all'>('all')
   const [text, setText] = useState('')
   const [dragActive, setDragActive] = useState(false)
   const [previewItem, setPreviewItem] = useState<TransferItem | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  // Rename states
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
 
   // 过滤列表
   const filteredItems = items.filter((item) => activeTab === 'all' || item.type === activeTab)
@@ -82,6 +86,21 @@ const Transfer = ({ userId }: TransferProps) => {
     }
   }
 
+  const startRenaming = (item: TransferItem) => {
+    if (item.type === 'text') return
+    setEditingId(item.id)
+    setEditName(item.metadata.name || '')
+  }
+
+  const handleRename = async () => {
+    if (!editingId || !editName.trim()) {
+        setEditingId(null)
+        return
+    }
+    await renameTransfer(editingId, editName.trim())
+    setEditingId(null)
+  }
+
   return (
     <div 
       className="relative min-h-[calc(100vh-200px)] space-y-6"
@@ -92,7 +111,9 @@ const Transfer = ({ userId }: TransferProps) => {
     >
       {/* 拖拽遮罩层 */}
       {dragActive && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center rounded-2xl border-2 border-dashed border-blue-500 bg-blue-50/90 backdrop-blur-sm dark:bg-blue-900/50">
+        <div 
+          className="absolute inset-0 z-50 flex items-center justify-center rounded-2xl border-2 border-dashed border-blue-500 bg-blue-50/90 backdrop-blur-sm dark:bg-blue-900/50 pointer-events-none"
+        >
           <div className="text-center text-blue-600 dark:text-blue-400">
             <UploadSimple size={48} className="mx-auto mb-2" />
             <p className="text-lg font-bold">释放文件以上传</p>

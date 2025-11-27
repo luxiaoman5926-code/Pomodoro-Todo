@@ -85,8 +85,11 @@ const TodoList = ({ userId }: TodoListProps) => {
   const [newEstimatedTime, setNewEstimatedTime] = useState<number | string>(25) // 默认25分钟
   const [newTag, setNewTag] = useState('')
   const [newTags, setNewTags] = useState<string[]>([])
+  const [newLinkIds, setNewLinkIds] = useState<string[]>([])
+  const [newDueDate, setNewDueDate] = useState('') // 截止日期
   const [showAddOptions, setShowAddOptions] = useState(false)
   const [showTagSelector, setShowTagSelector] = useState(false)
+  const [showLinkSelector, setShowLinkSelector] = useState(false)
   
   // 筛选状态
   const [filterTag, setFilterTag] = useState<string | null>(null)
@@ -235,7 +238,9 @@ const TodoList = ({ userId }: TodoListProps) => {
     setNewPriority('medium')
     setNewEstimatedTime(25)
     setNewTags([])
+    setNewLinkIds([])
     setNewTag('')
+    setNewDueDate('')
     setShowAddOptions(false)
   }
 
@@ -256,7 +261,8 @@ const TodoList = ({ userId }: TodoListProps) => {
           estimated_time: Number(newEstimatedTime) || 25,
           tags: newTags,
           subtasks: [],
-          transfer_ids: [],
+          transfer_ids: newLinkIds,
+          due_date: newDueDate ? new Date(newDueDate).toISOString() : null, // Add due_date if needed in DB schema
         },
       ])
       .select()
@@ -411,7 +417,7 @@ const TodoList = ({ userId }: TodoListProps) => {
           </button>
         </div>
       }
-      className="max-h-[calc(100vh-6rem)] flex flex-col" // Limit height and use flex-col
+      className="md:h-[640px] flex flex-col"
     >
       {activeTab === 'todo' && (
         <>
@@ -461,44 +467,50 @@ const TodoList = ({ userId }: TodoListProps) => {
           )}
 
           {/* 输入框及选项 */}
-          <div className="mb-6 rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 transition-all focus-within:border-stone-300 focus-within:bg-white focus-within:shadow-sm dark:border-white/5 dark:bg-ash dark:focus-within:border-white/10 dark:focus-within:bg-graphite flex-shrink-0">
+          <div className="mb-6 rounded-3xl border border-stone-200 bg-stone-50 px-5 py-4 transition-all focus-within:border-stone-300 focus-within:bg-white focus-within:shadow-lg focus-within:shadow-stone-100/50 dark:border-white/5 dark:bg-stone-800/50 dark:focus-within:border-white/10 dark:focus-within:bg-stone-800 flex-shrink-0">
             <form onSubmit={handleAddTask}>
-              <div className="flex flex-col gap-2">
-                <input
-                  ref={inputRef}
-                  className="w-full bg-transparent py-1 text-stone-800 placeholder:text-stone-400 focus:outline-none dark:text-fog dark:placeholder:text-mist"
-                  placeholder="输入下一项任务..."
-                  value={text}
-                  onChange={(event) => setText(event.target.value)}
-                  onFocus={() => setShowAddOptions(true)}
-                  disabled={isAdding}
-                />
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-stone-300 dark:border-stone-600" />
+                  <input
+                    ref={inputRef}
+                    className="w-full bg-transparent py-1 text-lg text-stone-800 placeholder:text-stone-400 focus:outline-none dark:text-stone-100 dark:placeholder:text-stone-500"
+                    placeholder="输入下一项任务..."
+                    value={text}
+                    onChange={(event) => setText(event.target.value)}
+                    onFocus={() => setShowAddOptions(true)}
+                    disabled={isAdding}
+                  />
+                </div>
                 
                 {/* 扩展选项 */}
                 {showAddOptions && (
-                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <div className="flex flex-wrap items-center gap-3 pt-2 pl-9">
                     {/* 优先级 */}
-                    <div className="flex items-center gap-0.5 rounded-lg bg-stone-100 p-0.5 dark:bg-white/5">
+                    <div className="flex items-center gap-1 rounded-full bg-stone-100 p-1 dark:bg-white/5">
                       {(['low', 'medium', 'high'] as const).map((p) => (
                         <button
                           key={p}
                           type="button"
                           onClick={() => setNewPriority(p)}
-                          className={`rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
+                          className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${
                             newPriority === p
-                              ? 'bg-white text-stone-900 shadow-sm dark:bg-white/20 dark:text-white'
-                              : 'text-stone-400 hover:text-stone-600 dark:text-mist dark:hover:text-white/70'
+                              ? 'bg-white text-stone-900 shadow-sm dark:bg-stone-700 dark:text-white'
+                              : 'text-stone-400 hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300'
                           }`}
                           title={PRIORITY_MAP[p].label}
                         >
-                          <Flag size={12} weight={newPriority === p ? 'fill' : 'regular'} className={newPriority === p ? PRIORITY_MAP[p].color : ''} />
+                          <div className="flex items-center gap-1">
+                            <Flag size={14} weight={newPriority === p ? 'fill' : 'regular'} className={newPriority === p ? PRIORITY_MAP[p].color : ''} />
+                            {newPriority === p && <span>{PRIORITY_MAP[p].label}</span>}
+                          </div>
                         </button>
                       ))}
                     </div>
 
                     {/* 预估时间 (分钟) */}
-                    <div className="flex items-center gap-1 rounded-lg bg-stone-100 px-1.5 py-0.5 dark:bg-white/5" title="预计时间(分钟)">
-                      <Clock size={12} className="text-stone-400 dark:text-mist" />
+                    <div className="flex items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1.5 dark:bg-white/5" title="预计时间(分钟)">
+                      <Clock size={14} className="text-stone-400 dark:text-stone-500" />
                       <input
                         type="number"
                         min="1"
@@ -508,30 +520,41 @@ const TodoList = ({ userId }: TodoListProps) => {
                             const val = Number(newEstimatedTime)
                             if (!val || val < 1) setNewEstimatedTime(1)
                         }}
-                        className="w-10 bg-transparent text-center text-[10px] font-medium outline-none dark:text-white"
+                        className="w-8 bg-transparent text-center text-xs font-medium outline-none dark:text-white"
                       />
-                      <span className="text-[10px] text-stone-400 dark:text-mist">m</span>
+                      <span className="text-xs text-stone-400 dark:text-stone-500">m</span>
+                    </div>
+
+                    {/* 截止日期 */}
+                    <div className="flex items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1.5 dark:bg-white/5 relative group">
+                      <ClockCounterClockwise size={14} className="text-stone-400 dark:text-stone-500" />
+                      <input
+                        type="date"
+                        value={newDueDate}
+                        onChange={(e) => setNewDueDate(e.target.value)}
+                        className="bg-transparent text-xs font-medium outline-none dark:text-white dark:[color-scheme:dark] w-24"
+                      />
                     </div>
 
                     {/* 标签输入 */}
-                    <div className="relative flex items-center gap-1 rounded-lg bg-stone-100 px-1.5 py-0.5 dark:bg-white/5">
+                    <div className="relative flex items-center gap-2 rounded-full bg-stone-100 px-3 py-1.5 dark:bg-white/5">
                       <button 
                         type="button"
                         onClick={() => setShowTagSelector(true)}
-                        className="text-stone-400 hover:text-stone-600 dark:text-mist dark:hover:text-white transition-colors"
+                        className="text-stone-400 hover:text-stone-600 dark:text-stone-500 dark:hover:text-white transition-colors"
                         title="选择已有标签"
                       >
-                        <ListChecks size={12} weight="bold" />
+                        <ListChecks size={14} weight="bold" />
                       </button>
                       <div className="h-3 w-px bg-stone-300 dark:bg-white/10" />
-                      <TagIcon size={12} className="text-stone-400 dark:text-mist" />
+                      <TagIcon size={14} className="text-stone-400 dark:text-stone-500" />
                       <input
-                        className="w-16 bg-transparent text-[10px] outline-none dark:text-white placeholder:text-stone-400 dark:placeholder:text-mist"
+                        className="w-20 bg-transparent text-xs outline-none dark:text-white placeholder:text-stone-400 dark:placeholder:text-stone-500"
                         placeholder="标签"
                         value={newTag}
                         onChange={(e) => setNewTag(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
-                        onBlur={() => setTimeout(() => handleAddTag(), 100)} // 延迟以允许点击建议
+                        onBlur={() => setTimeout(() => handleAddTag(), 100)}
                       />
                       {/* 标签建议下拉 */}
                       {newTag && tagSuggestions.length > 0 && (
@@ -553,22 +576,34 @@ const TodoList = ({ userId }: TodoListProps) => {
                       )}
                     </div>
 
+                    {/* 关联文件选择器 (New Task) */}
+                    {transferItems.length > 0 && (
+                      <button 
+                          type="button"
+                          onClick={() => setShowLinkSelector(true)}
+                          className="flex items-center gap-1 rounded bg-stone-100 px-1.5 py-0.5 text-[10px] text-stone-500 hover:bg-stone-200 dark:bg-white/5 dark:text-mist dark:hover:bg-white/10"
+                      >
+                           <Paperclip size={10} />
+                           Link
+                      </button>
+                    )}
+
                     <div className="flex-1" />
 
                     <button
                       type="submit"
                       disabled={isAdding || !text.trim()}
-                      className="flex items-center gap-1 rounded-lg bg-stone-900 px-2.5 py-1 text-[10px] font-bold text-white transition-colors hover:bg-stone-800 disabled:opacity-50 dark:bg-fog dark:text-coal dark:hover:bg-white/90"
+                      className="ml-auto flex items-center gap-1.5 rounded-full bg-stone-900 px-4 py-1.5 text-xs font-bold text-white transition-transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 dark:bg-stone-100 dark:text-stone-900"
                     >
-                      {isAdding ? <Spinner className="animate-spin" size={12} /> : <Plus weight="bold" size={12} />}
-                      添加
+                      {isAdding ? <Spinner className="animate-spin" size={14} /> : <Plus weight="bold" size={14} />}
+                      添加任务
                     </button>
                   </div>
                 )}
                 
                 {/* 已选标签展示 */}
                 {showAddOptions && newTags.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-1 pl-9">
                     {newTags.map((tag) => {
                         const colorStyle = isColorfulTags ? getTagColor(tag) : { bg: 'bg-stone-100', text: 'text-stone-600' }
                         return (
@@ -587,15 +622,15 @@ const TodoList = ({ userId }: TodoListProps) => {
           </div>
 
           {/* 列表 */}
-          <div className="custom-scrollbar flex-1 space-y-3 overflow-y-auto pr-2 min-h-0">
+          <div className="custom-scrollbar flex-1 space-y-4 overflow-y-auto pr-2 min-h-0 px-1">
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
-                <Spinner className="size-6 animate-spin text-stone-400 dark:text-mist" weight="duotone" />
+                <Spinner className="size-8 animate-spin text-stone-300 dark:text-stone-600" weight="duotone" />
               </div>
             ) : sortedAndFilteredTasks.length === 0 ? (
-              <div className="flex h-full flex-col items-center justify-center py-8 text-stone-300 dark:text-white/10">
-                <ClipboardText size={48} weight="duotone" className="mb-4 opacity-50" />
-                <p className="text-sm font-medium">
+              <div className="flex h-full flex-col items-center justify-center py-12 text-stone-300 dark:text-stone-700">
+                <ClipboardText size={64} weight="duotone" className="mb-6 opacity-40" />
+                <p className="text-lg font-medium">
                   {filterTag ? '该标签下无任务' : '暂无任务'}
                 </p>
               </div>
@@ -695,6 +730,31 @@ const TodoList = ({ userId }: TodoListProps) => {
         }}
         keyExtractor={(tag) => tag}
       />
+
+      <SelectionModal
+        title="关联文件"
+        isOpen={showLinkSelector}
+        onClose={() => setShowLinkSelector(false)}
+        items={transferItems}
+        selectedIds={newLinkIds}
+        onToggle={(id) => {
+            if (newLinkIds.includes(id)) {
+                setNewLinkIds(newLinkIds.filter(tid => tid !== id))
+            } else {
+                setNewLinkIds([...newLinkIds, id])
+            }
+        }}
+        renderItem={(item) => (
+            <div className="flex items-center gap-2 overflow-hidden">
+                {item.type === 'text' ? <LinkIcon size={16} /> : <FileIcon size={16} />}
+                <div className="flex flex-col overflow-hidden">
+                    <span className="text-sm font-medium truncate">{item.type === 'text' ? item.content : (item.metadata.name || 'Unknown File')}</span>
+                    <span className="text-[10px] text-stone-400">{new Date(item.created_at).toLocaleDateString()}</span>
+                </div>
+            </div>
+        )}
+        keyExtractor={(item) => item.id}
+      />
     </ThemedCard>
   )
 }
@@ -725,6 +785,10 @@ const TaskItem = ({ task, isSelected, onToggle, onDelete, onSelect, onUpdate, tr
   const [showTagSelector, setShowTagSelector] = useState(false)
   const [showLinkSelector, setShowLinkSelector] = useState(false)
   
+  // Subtask editing state
+  const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null)
+  const [editSubtaskValue, setEditSubtaskValue] = useState('')
+  
   // Reset edit states when entering editing
   useEffect(() => {
     if (isEditing) {
@@ -741,6 +805,23 @@ const TaskItem = ({ task, isSelected, onToggle, onDelete, onSelect, onUpdate, tr
   const completedSubtasks = task.subtasks?.filter(s => s.completed).length || 0
   const totalSubtasks = task.subtasks?.length || 0
   const linkedTransfers = task.transfer_ids?.map(id => transferItems.find(t => t.id === id)).filter(Boolean) as TransferItem[] || []
+
+  const startEditingSubtask = (subtask: Subtask) => {
+    setEditingSubtaskId(subtask.id)
+    setEditSubtaskValue(subtask.text)
+  }
+
+  const saveSubtask = () => {
+    if (!editingSubtaskId) return
+    
+    if (editSubtaskValue.trim()) {
+        const updatedSubtasks = task.subtasks?.map(s => 
+          s.id === editingSubtaskId ? { ...s, text: editSubtaskValue.trim() } : s
+        )
+        onUpdate({ subtasks: updatedSubtasks })
+    }
+    setEditingSubtaskId(null)
+  }
 
   const handleSave = () => {
     const updates: Partial<Task> = {}
@@ -821,32 +902,32 @@ const TaskItem = ({ task, isSelected, onToggle, onDelete, onSelect, onUpdate, tr
 
   return (
     <div
-      className={`group relative flex flex-col gap-1 rounded-xl border-2 px-3 py-2.5 transition-all ${
+      className={`group relative flex flex-col gap-2 rounded-2xl border px-5 py-4 transition-all duration-200 ${
         isSelected
-          ? 'border-amber-300 bg-amber-50 dark:border-amber-500/50 dark:bg-amber-500/10'
+          ? 'border-amber-300 bg-amber-50 shadow-md shadow-amber-100/50 dark:border-amber-500/50 dark:bg-amber-900/20 dark:shadow-none'
           : task.completed
-          ? 'border-transparent bg-stone-50 opacity-60 hover:opacity-100 dark:bg-white/5'
-          : 'border-stone-200 bg-white hover:border-stone-300 hover:shadow-md dark:border-white/5 dark:bg-ash dark:hover:border-white/10 dark:hover:bg-ash/80'
-      } ${isSelected ? '' : 'border-l-4 ' + (priorityStyle?.border?.replace('border', 'border-l') || 'border-l-stone-200')}`}
+          ? 'border-transparent bg-stone-50/50 opacity-60 hover:opacity-100 dark:bg-white/5'
+          : 'border-stone-100 bg-white shadow-sm hover:border-stone-200 hover:shadow-lg hover:shadow-stone-100/50 dark:border-white/5 dark:bg-stone-800 dark:hover:border-white/10 dark:hover:bg-stone-800/80 dark:shadow-none'
+      } ${isSelected ? '' : 'border-l-[6px] ' + (priorityStyle?.border?.replace('border', 'border-l') || 'border-l-stone-200')}`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex flex-1 items-start gap-2">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-1 items-start gap-3">
           {/* 完成按钮 */}
           <button
             onClick={onToggle}
-            className={`mt-0.5 ${task.completed ? 'text-stone-900 dark:text-white' : 'text-stone-300 hover:text-stone-500 dark:text-white/20 dark:hover:text-white'}`}
+            className={`mt-1 transition-transform active:scale-90 ${task.completed ? 'text-stone-800 dark:text-stone-200' : 'text-stone-300 hover:text-stone-500 dark:text-stone-600 dark:hover:text-stone-400'}`}
           >
-            {task.completed ? <CheckCircle weight="fill" size={20} /> : <Circle size={20} />}
+            {task.completed ? <CheckCircle weight="fill" size={24} /> : <Circle size={24} />}
           </button>
           
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 pt-0.5">
             {/* 编辑模式 vs 查看模式 */}
             {isEditing ? (
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-3">
                 {/* 标题输入 */}
                 <input
                   autoFocus
-                  className="w-full bg-transparent font-medium outline-none border-b border-stone-300 dark:border-white/10 dark:text-fog text-sm pb-1"
+                  className="w-full bg-transparent text-lg font-medium outline-none border-b-2 border-stone-200 focus:border-stone-800 dark:border-stone-700 dark:focus:border-stone-400 dark:text-stone-100 pb-2"
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSave()}
@@ -919,8 +1000,8 @@ const TaskItem = ({ task, isSelected, onToggle, onDelete, onSelect, onUpdate, tr
                         onClick={() => setShowLinkSelector(true)}
                         className="flex items-center gap-1 rounded bg-stone-100 px-1.5 py-0.5 text-[10px] text-stone-500 hover:bg-stone-200 dark:bg-white/5 dark:text-mist dark:hover:bg-white/10"
                     >
-                         <Paperclip size={10} />
-                         Link
+                        <Paperclip size={10} />
+                        Link
                     </button>
                   )}
                 </div>
@@ -963,13 +1044,13 @@ const TaskItem = ({ task, isSelected, onToggle, onDelete, onSelect, onUpdate, tr
             ) : (
               <>
                 {/* 标题区 (支持双击编辑) */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-start justify-between gap-2">
                     <p
                         onDoubleClick={() => !task.completed && setIsEditing(true)}
-                        className={`font-medium text-sm transition truncate select-none cursor-text ${
+                        className={`font-medium text-base leading-relaxed transition truncate select-none cursor-text ${
                         task.completed
-                            ? 'text-stone-400 line-through decoration-stone-300 dark:text-mist dark:decoration-white/20'
-                            : 'text-stone-700 dark:text-fog'
+                            ? 'text-stone-400 line-through decoration-stone-300 dark:text-stone-500 dark:decoration-stone-700'
+                            : 'text-stone-800 dark:text-stone-100'
                         }`}
                         title="双击编辑"
                     >
@@ -977,22 +1058,22 @@ const TaskItem = ({ task, isSelected, onToggle, onDelete, onSelect, onUpdate, tr
                     </p>
                     
                     {/* 进度信息 (紧凑模式) */}
-                    <div className="flex items-center gap-2 ml-auto flex-shrink-0">
-                        <div className="flex items-center gap-1">
-                            <TomatoProgress count={task.pomodoros || 0} size={12} />
+                    <div className="flex items-center gap-2 ml-auto flex-shrink-0 pt-1">
+                        <div className="flex items-center gap-1.5 bg-stone-100 dark:bg-stone-800 rounded-full px-2 py-0.5">
+                            <TomatoProgress count={task.pomodoros || 0} size={14} />
                             {/* 预计时间/总番茄数 */}
-                            <span className="text-[10px] text-stone-400 dark:text-mist">
+                            <span className="text-xs text-stone-500 dark:text-stone-400 font-medium">
                                 {task.estimated_time ? `${task.estimated_time}m` : `/${task.estimated_pomodoros || 1}`}
                             </span>
                         </div>
                     </div>
                 </div>
                 
-                {/* 第二行：标签、元数据、链接文件 (更紧凑) */}
-                <div className="mt-1 flex flex-wrap items-center gap-2">
-                  {task.priority && task.priority !== 'medium' && priorityStyle && (
-                    <span className={`flex items-center gap-0.5 text-[10px] font-bold uppercase ${priorityStyle.color}`}>
-                      <Flag weight="fill" size={10} />
+                {/* 第二行：标签、元数据、链接文件 (更宽松) */}
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {priorityStyle && (
+                    <span className={`flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-bold uppercase tracking-wide ${priorityStyle.color} ${priorityStyle.bg}`}>
+                      <Flag weight="fill" size={12} />
                       {priorityStyle.label}
                     </span>
                   )}
@@ -1000,7 +1081,7 @@ const TaskItem = ({ task, isSelected, onToggle, onDelete, onSelect, onUpdate, tr
                   {task.tags?.map((tag) => {
                     const colorStyle = isColorfulTags ? getTagColor(tag) : { bg: 'bg-stone-100 dark:bg-white/10', text: 'text-stone-500 dark:text-mist' }
                     return (
-                      <span key={tag} className={`rounded px-1 py-0.5 text-[10px] ${colorStyle.bg} ${colorStyle.text}`}>
+                      <span key={tag} className={`rounded-md px-2 py-1 text-[11px] font-medium ${colorStyle.bg} ${colorStyle.text}`}>
                         #{tag}
                       </span>
                     )
@@ -1070,24 +1151,42 @@ const TaskItem = ({ task, isSelected, onToggle, onDelete, onSelect, onUpdate, tr
 
       {/* 子任务区域 */}
       {isExpanded && (
-        <div className="mt-1 border-t border-stone-100 pt-1 dark:border-white/5 pl-1">
-          <div className="space-y-0.5">
+        <div className="mt-3 border-t border-stone-100 pt-2 dark:border-white/5 pl-1">
+          <div className="space-y-1">
             {task.subtasks?.map(subtask => (
-              <div key={subtask.id} className="group/sub flex items-center gap-2 py-0.5">
+              <div key={subtask.id} className="group/sub flex items-center gap-3 py-1">
                 <button
                   onClick={() => toggleSubtask(subtask.id)}
-                  className={`text-stone-400 hover:text-stone-600 dark:text-mist dark:hover:text-white ${subtask.completed ? 'text-emerald-500 hover:text-emerald-600' : ''}`}
+                  className={`flex-shrink-0 text-stone-400 hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300 ${subtask.completed ? 'text-emerald-500 hover:text-emerald-600' : ''}`}
                 >
-                  {subtask.completed ? <CheckCircle size={12} weight="fill" /> : <Circle size={12} />}
+                  {subtask.completed ? <CheckCircle size={18} weight="fill" /> : <Circle size={18} />}
                 </button>
-                <span className={`flex-1 text-xs ${subtask.completed ? 'text-stone-400 line-through' : 'text-stone-600 dark:text-mist'}`}>
-                  {subtask.text}
-                </span>
+                
+                {editingSubtaskId === subtask.id ? (
+                    <input 
+                        autoFocus
+                        className="flex-1 bg-transparent text-sm outline-none border-b border-stone-300 dark:border-stone-600 dark:text-white pb-0.5"
+                        value={editSubtaskValue}
+                        onChange={(e) => setEditSubtaskValue(e.target.value)}
+                        onBlur={saveSubtask}
+                        onKeyDown={(e) => e.key === 'Enter' && saveSubtask()}
+                    />
+                ) : (
+                    <span 
+                        onDoubleClick={() => !subtask.completed && startEditingSubtask(subtask)}
+                        className={`flex-1 text-sm transition-colors cursor-text select-none ${subtask.completed ? 'text-stone-400 line-through dark:text-stone-600' : 'text-stone-700 dark:text-stone-300'}`}
+                        title="双击编辑子任务"
+                    >
+                      {subtask.text}
+                    </span>
+                )}
+
                 <button
                   onClick={() => deleteSubtask(subtask.id)}
-                  className="opacity-0 group-hover/sub:opacity-100 p-0.5 text-stone-300 hover:text-red-500"
+                  className="opacity-0 group-hover/sub:opacity-100 p-1 text-stone-300 hover:text-red-500 dark:text-stone-600 dark:hover:text-red-400 transition-opacity"
+                  title="删除子任务"
                 >
-                  <X size={10} />
+                  <X size={16} />
                 </button>
               </div>
             ))}
@@ -1095,26 +1194,26 @@ const TaskItem = ({ task, isSelected, onToggle, onDelete, onSelect, onUpdate, tr
           
           {/* 编辑模式下，显示添加子任务和关联文件管理 */}
           {isEditing && (
-            <div className="mt-2 border-t border-stone-100 pt-2 dark:border-white/5">
-              <p className="mb-1 text-[10px] font-bold text-stone-400 dark:text-mist">关联文件</p>
-              <div className="flex flex-wrap gap-1">
+            <div className="mt-3 border-t border-stone-100 pt-3 dark:border-white/5">
+              <p className="mb-2 text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wide">关联文件</p>
+              <div className="flex flex-wrap gap-2">
                  {linkedTransfers.map(item => (
-                    <div key={item.id} className="flex items-center gap-1 rounded bg-stone-100 px-1.5 py-0.5 text-[10px] text-stone-600 dark:bg-white/10 dark:text-mist">
-                       {item.type === 'text' ? <LinkIcon size={10} /> : <FileIcon size={10} />}
-                       <span className="max-w-[100px] truncate">{item.type === 'text' ? '文本' : item.metadata.name}</span>
-                       <button onClick={() => handleUnlinkTransfer(item.id)} className="hover:text-red-500"><X size={10} /></button>
+                    <div key={item.id} className="flex items-center gap-1.5 rounded-md bg-stone-100 px-2 py-1 text-xs text-stone-600 dark:bg-white/10 dark:text-stone-300">
+                       {item.type === 'text' ? <LinkIcon size={12} /> : <FileIcon size={12} />}
+                       <span className="max-w-[120px] truncate">{item.type === 'text' ? '文本' : item.metadata.name}</span>
+                       <button onClick={() => handleUnlinkTransfer(item.id)} className="hover:text-red-500"><X size={12} /></button>
                     </div>
                  ))}
-                 {linkedTransfers.length === 0 && <span className="text-[10px] text-stone-400 italic">无关联文件</span>}
+                 {linkedTransfers.length === 0 && <span className="text-xs text-stone-400 italic">无关联文件</span>}
               </div>
             </div>
           )}
 
           {/* 添加子任务输入 */}
-          <form onSubmit={handleAddSubtask} className="mt-1 flex items-center gap-2">
-             <Plus size={12} className="text-stone-400 dark:text-mist" />
+          <form onSubmit={handleAddSubtask} className="mt-2 flex items-center gap-3">
+             <Plus size={18} className="text-stone-400 dark:text-stone-500" />
              <input
-               className="flex-1 bg-transparent text-xs outline-none placeholder:text-stone-300 dark:text-fog dark:placeholder:text-mist"
+               className="flex-1 bg-transparent text-sm outline-none placeholder:text-stone-400 dark:text-white dark:placeholder:text-stone-600 py-1"
                placeholder="添加子任务..."
                value={subtaskText}
                onChange={(e) => setSubtaskText(e.target.value)}

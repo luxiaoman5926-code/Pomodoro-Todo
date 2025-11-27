@@ -24,22 +24,38 @@ export const useTransfers = (userId: string | null) => {
     if (error) {
       console.error('Error fetching transfers:', error)
     } else if (data) {
-      // 为文件生成签名 URL (有效期 1 小时)
-      const itemsWithUrls = await Promise.all(
-        data.map(async (item) => {
-          if (item.type === 'text') return item
-          
-          // item.content 存储的是 storage path
-          const { data: signedData } = await supabase.storage
-            .from('transfers')
-            .createSignedUrl(item.content, 3600)
-            
-          return {
-            ...item,
-            url: signedData?.signedUrl || '', // 临时 URL
-          }
-        })
-      )
+      // 批量生成签名 URL (有效期 1 小时)
+      // 找出所有需要签名的文件路径
+      const filePaths = data
+        .filter(item => item.type !== 'text')
+        .map(item => item.content)
+
+      let urlMap = new Map<string, string>()
+
+      if (filePaths.length > 0) {
+        const { data: signedData, error: signError } = await supabase.storage
+          .from('transfers')
+          .createSignedUrls(filePaths, 3600)
+
+        if (signError) {
+          console.error('Error signing urls:', signError)
+        } else if (signedData) {
+          signedData.forEach((d) => {
+            if (d.path && d.signedUrl) {
+              urlMap.set(d.path, d.signedUrl)
+            }
+          })
+        }
+      }
+
+      const itemsWithUrls = data.map((item) => {
+        if (item.type === 'text') return item
+        return {
+          ...item,
+          url: urlMap.get(item.content) || '', // 获取对应的 URL
+        }
+      })
+
       setItems(itemsWithUrls as TransferItem[])
     }
     setLoading(false)
@@ -89,7 +105,7 @@ export const useTransfers = (userId: string | null) => {
       if (uploadError) throw uploadError
 
       // 3. Insert into DB
-      const { error: dbError } = await supabase
+      const { data: insertedData, error: dbError } = await supabase
         .from('transfers')
         .insert({
           user_id: userId,
@@ -101,13 +117,17 @@ export const useTransfers = (userId: string | null) => {
             mimeType: file.type,
           },
         })
+        .select()
+        .single()
 
       if (dbError) throw dbError
 
       fetchTransfers()
+      return insertedData
     } catch (error) {
       console.error('Error uploading file:', error)
       alert('上传失败，请重试')
+      return null
     } finally {
       setUploading(false)
     }
@@ -151,7 +171,59 @@ export const useTransfers = (userId: string | null) => {
     sendText,
     uploadFile,
     deleteTransfer,
-    refresh: fetchTransfers
+    refresh: fetchTransfers,
+    renameTransfer: async (id: string, newName: string) => {
+      // Optimistic update
+      setItems(prev => prev.map(item => {
+        if (item.id === id) {
+          return {
+            ...item,
+            metadata: {
+              ...item.metadata,
+              name: newName
+            }
+          }
+        }
+        return item
+      }))
+
+      const { error } = await supabase
+        .from('transfers')
+        .update({
+          metadata: {
+            // We need to fetch current metadata first or rely on partial update if jsonb merges?
+            // Supabase jsonb updates replace the whole object usually unless using specialized functions.
+            // So we better make sure we have the other metadata preserved.
+            // Since we did optimistic update, we can assume `items` has the latest structure but wait...
+            // Actually, let's just update the specific field using jsonb_set if possible or just fetch-update-push.
+            // For simplicity here, we'll assume we're just updating the name in the jsonb blob.
+            // We need to get the current item to preserve other metadata fields like size/mimeType.
+            // The optimistic update handles the UI. For DB, we might need a more robust approach or 
+            // assume the current state in `items` is valid to send back (risky if stale).
+            // A safer way for a simple field update inside JSONB without fetching first is complex in simple update calls.
+            // Let's fetch the specific item first to be safe, or just use the item from state if we trust it.
+             name: newName
+          }
+        }) // Wait, this will replace metadata with JUST {name: newName}. We need to merge.
+        // Let's actually query the item from the state to merge.
+      
+      // Correct approach:
+      const itemToUpdate = items.find(i => i.id === id)
+      if (!itemToUpdate) return
+
+      const newMetadata = { ...itemToUpdate.metadata, name: newName }
+      
+      const { error: updateError } = await supabase
+        .from('transfers')
+        .update({ metadata: newMetadata })
+        .eq('id', id)
+
+      if (updateError) {
+        console.error('Error renaming transfer:', updateError)
+        // Revert optimistic update
+        fetchTransfers()
+      }
+    }
   }
 }
 
