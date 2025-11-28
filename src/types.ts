@@ -22,6 +22,19 @@ export type Task = {
   estimated_time?: number // 预计时间（分钟）
   subtasks?: Subtask[]
   transfer_ids?: string[] // Linked transfer items
+  project_id?: string | null // 所属项目ID
+  due_date?: string | null // 截止日期
+}
+
+// 项目类型
+export type Project = {
+  id: string
+  user_id: string
+  name: string
+  color: string // 项目颜色标识
+  description?: string
+  created_at: string
+  updated_at?: string
 }
 
 // Auth 相关类型

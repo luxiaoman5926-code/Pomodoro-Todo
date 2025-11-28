@@ -24,6 +24,7 @@ import {
   File as FileIcon,
   PencilSimple,
   Check,
+  ArrowsOutSimple,
 } from '@phosphor-icons/react'
 import ThemedCard from './ThemedCard'
 import TomatoProgress from './TomatoProgress'
@@ -34,6 +35,7 @@ import { useTransfers } from '../hooks/useTransfers'
 
 type TodoListProps = {
   userId: string
+  onExpand?: () => void
 }
 
 const PRIORITY_MAP = {
@@ -73,7 +75,7 @@ const getTagColor = (tag: string) => {
   return TAG_COLORS[index]
 }
 
-const TodoList = ({ userId }: TodoListProps) => {
+const TodoList = ({ userId, onExpand }: TodoListProps) => {
   const [tasks, setTasks] = useState<Task[]>([])
   const [text, setText] = useState('')
   const [isLoading, setIsLoading] = useState(true)
@@ -474,29 +476,40 @@ const TodoList = ({ userId }: TodoListProps) => {
       label="任务清单"
       title="我的任务"
       meta={
-        <div className="flex gap-2 rounded-lg bg-stone-100 p-1 dark:bg-ash">
-          <button
-            onClick={() => setActiveTab('todo')}
-            className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-bold transition-all ${
-              activeTab === 'todo'
-                ? 'bg-white text-stone-900 shadow-sm dark:bg-graphite dark:text-fog dark:shadow-none'
-                : 'text-stone-400 hover:text-stone-600 dark:text-mist dark:hover:text-white/60'
-            }`}
-          >
-            <ListChecks weight="bold" />
-            待办
-          </button>
-          <button
-            onClick={() => setActiveTab('history')}
-            className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-bold transition-all ${
-              activeTab === 'history'
-                ? 'bg-white text-stone-900 shadow-sm dark:bg-graphite dark:text-fog dark:shadow-none'
-                : 'text-stone-400 hover:text-stone-600 dark:text-mist dark:hover:text-white/60'
-            }`}
-          >
-            <ClockCounterClockwise weight="bold" />
-            历史
-          </button>
+        <div className="flex items-center gap-3">
+          <div className="flex gap-2 rounded-lg bg-stone-100 p-1 dark:bg-ash">
+            <button
+              onClick={() => setActiveTab('todo')}
+              className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-bold transition-all ${
+                activeTab === 'todo'
+                  ? 'bg-white text-stone-900 shadow-sm dark:bg-graphite dark:text-fog dark:shadow-none'
+                  : 'text-stone-400 hover:text-stone-600 dark:text-mist dark:hover:text-white/60'
+              }`}
+            >
+              <ListChecks weight="bold" />
+              待办
+            </button>
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-bold transition-all ${
+                activeTab === 'history'
+                  ? 'bg-white text-stone-900 shadow-sm dark:bg-graphite dark:text-fog dark:shadow-none'
+                  : 'text-stone-400 hover:text-stone-600 dark:text-mist dark:hover:text-white/60'
+              }`}
+            >
+              <ClockCounterClockwise weight="bold" />
+              历史
+            </button>
+          </div>
+          {onExpand && (
+            <button
+              onClick={onExpand}
+              className="flex items-center justify-center rounded-lg p-1.5 text-stone-400 transition hover:bg-stone-100 hover:text-stone-600 dark:hover:bg-stone-800 dark:hover:text-white"
+              title="展开任务管理"
+            >
+              <ArrowsOutSimple size={18} weight="bold" />
+            </button>
+          )}
         </div>
       }
       className="md:h-[640px] flex flex-col"

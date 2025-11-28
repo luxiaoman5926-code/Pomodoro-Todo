@@ -1,5 +1,5 @@
 import { useEffect, useState, lazy, Suspense } from 'react'
-import { Moon, Sun, Spinner, Timer as TimerIcon, ChartBar, PaperPlaneRight, Gear } from '@phosphor-icons/react'
+import { Moon, Sun, Spinner, Timer as TimerIcon, ChartBar, PaperPlaneRight, Gear, ListChecks } from '@phosphor-icons/react'
 import InstallPrompt from './components/InstallPrompt'
 import LoginPage from './components/LoginPage'
 import Timer from './components/Timer'
@@ -14,11 +14,12 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 const Statistics = lazy(() => import('./components/Statistics'))
 const Transfer = lazy(() => import('./components/Transfer'))
 const Settings = lazy(() => import('./components/Settings'))
+const TodoFullPage = lazy(() => import('./components/TodoFullPage'))
 
 const App = () => {
   const { theme, toggleTheme } = useTheme()
   const { user, loading, signInWithGoogle, signInWithGithub, signInWithEmail, signUpWithEmail, signOut } = useAuth()
-  const [activeTab, setActiveTab] = useState<'timer' | 'statistics' | 'transfer' | 'settings'>('timer')
+  const [activeTab, setActiveTab] = useState<'timer' | 'statistics' | 'transfer' | 'settings' | 'tasks'>('timer')
 
   // 加载中状态
   if (loading) {
@@ -89,6 +90,12 @@ const App = () => {
             label="专注"
           />
           <TabButton
+            active={activeTab === 'tasks'}
+            onClick={() => setActiveTab('tasks')}
+            icon={ListChecks}
+            label="任务"
+          />
+          <TabButton
             active={activeTab === 'transfer'}
             onClick={() => setActiveTab('transfer')}
             icon={PaperPlaneRight}
@@ -110,7 +117,7 @@ const App = () => {
 
         {/* 主布局 */}
         <PomodoroProvider>
-          <PomodoroProviderContent userId={user.id} activeTab={activeTab} />
+          <PomodoroProviderContent userId={user.id} activeTab={activeTab} onNavigate={setActiveTab} />
         </PomodoroProvider>
       </div>
       <InstallPrompt />
@@ -143,10 +150,11 @@ const TabButton = ({ active, onClick, icon: Icon, label }: TabButtonProps) => (
 // PomodoroProvider 内容组件
 type PomodoroProviderContentProps = {
   userId: string
-  activeTab: 'timer' | 'statistics' | 'transfer' | 'settings'
+  activeTab: 'timer' | 'statistics' | 'transfer' | 'settings' | 'tasks'
+  onNavigate: (tab: 'timer' | 'statistics' | 'transfer' | 'settings' | 'tasks') => void
 }
 
-const PomodoroProviderContent = ({ userId, activeTab }: PomodoroProviderContentProps) => {
+const PomodoroProviderContent = ({ userId, activeTab, onNavigate }: PomodoroProviderContentProps) => {
   const { setUserId, toggleTimer, addTask } = usePomodoroContext()
 
   // 设置用户ID
@@ -186,6 +194,14 @@ const PomodoroProviderContent = ({ userId, activeTab }: PomodoroProviderContentP
     </div>
   )
 
+  if (activeTab === 'tasks') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <TodoFullPage userId={userId} onBack={() => onNavigate('timer')} />
+      </Suspense>
+    )
+  }
+
   if (activeTab === 'statistics') {
     return (
       <Suspense fallback={<LoadingFallback />}>
@@ -213,7 +229,7 @@ const PomodoroProviderContent = ({ userId, activeTab }: PomodoroProviderContentP
   return (
     <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
       <Timer />
-      <TodoList userId={userId} />
+      <TodoList userId={userId} onExpand={() => onNavigate('tasks')} />
     </div>
   )
 }
