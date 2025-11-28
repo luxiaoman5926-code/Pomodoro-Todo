@@ -33,6 +33,8 @@ export type Project = {
   name: string
   color: string // 项目颜色标识
   description?: string
+  start_date?: string | null // 项目开始日期
+  end_date?: string | null // 项目截止日期
   created_at: string
   updated_at?: string
 }

@@ -173,7 +173,7 @@ const Timer = () => {
       </div>
 
       {/* 倒计时区域 */}
-      <div className="relative flex flex-1 flex-col items-center justify-center py-4">
+      <div className="relative flex flex-1 flex-col items-center justify-center py-4 -mt-8">
         {/* 环形进度条容器 */}
         <div className="relative flex items-center justify-center">
           {/* SVG 环形 */}
@@ -210,8 +210,8 @@ const Timer = () => {
           </svg>
 
           {/* 中间的时间显示 */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <div className="mb-2 flex items-center gap-2 opacity-80">
+          <div className="absolute inset-0 flex flex-col items-center justify-center -mt-2">
+            <div className="mb-1 flex items-center gap-2 opacity-80">
               <PhaseIcon 
                 size={24} 
                 weight="duotone"

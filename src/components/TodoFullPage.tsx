@@ -58,6 +58,8 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [newProjectName, setNewProjectName] = useState('')
   const [newProjectColor, setNewProjectColor] = useState(PROJECT_COLORS[0])
+  const [newProjectStartDate, setNewProjectStartDate] = useState('')
+  const [newProjectEndDate, setNewProjectEndDate] = useState('')
   const [currentMonth, setCurrentMonth] = useState(new Date())
 
   const { settings } = usePomodoroContext()
@@ -96,23 +98,37 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
 
   // 创建项目
   const createProject = async () => {
-    if (!newProjectName.trim()) return
+    const name = newProjectName.trim()
+    if (!name) return
 
-    const { data, error } = await supabase
-      .from('projects')
-      .insert({
-        user_id: userId,
-        name: newProjectName.trim(),
-        color: newProjectColor,
-      })
-      .select()
-      .single()
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .insert({
+          user_id: userId,
+          name: name,
+          color: newProjectColor,
+          start_date: newProjectStartDate ? new Date(newProjectStartDate).toISOString() : null,
+          end_date: newProjectEndDate ? new Date(newProjectEndDate).toISOString() : null,
+        })
+        .select()
+        .single()
 
-    if (!error && data) {
-      setProjects([...projects, data])
-      setNewProjectName('')
-      setNewProjectColor(PROJECT_COLORS[0])
-      setShowProjectModal(false)
+      if (error) {
+        console.error('Error creating project:', error)
+        return
+      }
+
+      if (data) {
+        setProjects([...projects, data])
+        setNewProjectName('')
+        setNewProjectColor(PROJECT_COLORS[0])
+        setNewProjectStartDate('')
+        setNewProjectEndDate('')
+        setShowProjectModal(false)
+      }
+    } catch (err) {
+      console.error('Error creating project:', err)
     }
   }
 
@@ -125,17 +141,27 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
       .update({
         name: newProjectName.trim(),
         color: newProjectColor,
+        start_date: newProjectStartDate ? new Date(newProjectStartDate).toISOString() : null,
+        end_date: newProjectEndDate ? new Date(newProjectEndDate).toISOString() : null,
       })
       .eq('id', editingProject.id)
 
     if (!error) {
       setProjects(projects.map(p => 
         p.id === editingProject.id 
-          ? { ...p, name: newProjectName.trim(), color: newProjectColor }
+          ? { 
+              ...p, 
+              name: newProjectName.trim(), 
+              color: newProjectColor,
+              start_date: newProjectStartDate ? new Date(newProjectStartDate).toISOString() : null,
+              end_date: newProjectEndDate ? new Date(newProjectEndDate).toISOString() : null,
+            }
           : p
       ))
       setEditingProject(null)
       setNewProjectName('')
+      setNewProjectStartDate('')
+      setNewProjectEndDate('')
       setShowProjectModal(false)
     }
   }
@@ -275,6 +301,8 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
     setEditingProject(project)
     setNewProjectName(project.name)
     setNewProjectColor(project.color)
+    setNewProjectStartDate(project.start_date ? project.start_date.split('T')[0] : '')
+    setNewProjectEndDate(project.end_date ? project.end_date.split('T')[0] : '')
     setShowProjectModal(true)
   }
 
@@ -331,10 +359,10 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
 
       <div className="mx-auto max-w-7xl p-6">
         {activeView === 'list' ? (
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-4 items-start">
             {/* 侧边栏 - 项目列表 */}
             <div className="lg:col-span-1">
-              <ThemedCard className="p-4">
+              <div className="rounded-3xl border border-stone-100 bg-white p-4 shadow-xl shadow-stone-200/50 dark:border-white/5 dark:bg-stone-900 dark:shadow-none">
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="text-sm font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
                     项目
@@ -374,56 +402,72 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
                   </button>
 
                   {/* 项目列表 */}
-                  {projects.map(project => (
-                    <div key={project.id} className="group">
-                      <button
-                        onClick={() => setSelectedProject(project.id)}
-                        className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left transition ${
-                          selectedProject === project.id
-                            ? 'bg-stone-100 dark:bg-stone-800'
-                            : 'hover:bg-stone-50 dark:hover:bg-stone-800/50'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="size-6 rounded-lg"
-                            style={{ backgroundColor: project.color + '20' }}
-                          >
+                  {projects.map(project => {
+                    const hasDateRange = project.start_date || project.end_date
+                    const formatDateShort = (dateStr: string | null | undefined) => {
+                      if (!dateStr) return ''
+                      const date = new Date(dateStr)
+                      return `${date.getMonth() + 1}/${date.getDate()}`
+                    }
+                    
+                    return (
+                      <div key={project.id} className="group">
+                        <button
+                          onClick={() => setSelectedProject(project.id)}
+                          className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left transition ${
+                            selectedProject === project.id
+                              ? 'bg-stone-100 dark:bg-stone-800'
+                              : 'hover:bg-stone-50 dark:hover:bg-stone-800/50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
                             <div
-                              className="flex size-full items-center justify-center rounded-lg"
-                              style={{ color: project.color }}
+                              className="size-6 rounded-lg flex-shrink-0"
+                              style={{ backgroundColor: project.color + '20' }}
                             >
-                              <FolderSimple size={14} weight="fill" />
+                              <div
+                                className="flex size-full items-center justify-center rounded-lg"
+                                style={{ color: project.color }}
+                              >
+                                <FolderSimple size={14} weight="fill" />
+                              </div>
+                            </div>
+                            <div className="min-w-0">
+                              <span className="block font-medium text-stone-700 dark:text-stone-200 truncate">
+                                {project.name}
+                              </span>
+                              {hasDateRange && (
+                                <span className="block text-[10px] text-stone-400 dark:text-stone-500">
+                                  {formatDateShort(project.start_date)}{project.start_date && project.end_date ? ' - ' : ''}{formatDateShort(project.end_date)}
+                                </span>
+                              )}
                             </div>
                           </div>
-                          <span className="font-medium text-stone-700 dark:text-stone-200">
-                            {project.name}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium text-stone-400">
-                            {groupedTasks[project.id]?.length || 0}
-                          </span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              openEditProject(project)
-                            }}
-                            className="rounded p-1 opacity-0 transition hover:bg-stone-200 group-hover:opacity-100 dark:hover:bg-stone-700"
-                          >
-                            <DotsThree size={14} />
-                          </button>
-                        </div>
-                      </button>
-                    </div>
-                  ))}
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className="text-xs font-medium text-stone-400">
+                              {groupedTasks[project.id]?.length || 0}
+                            </span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                openEditProject(project)
+                              }}
+                              className="rounded p-1 opacity-0 transition hover:bg-stone-200 group-hover:opacity-100 dark:hover:bg-stone-700"
+                            >
+                              <DotsThree size={14} />
+                            </button>
+                          </div>
+                        </button>
+                      </div>
+                    )
+                  })}
                 </div>
-              </ThemedCard>
+              </div>
             </div>
 
             {/* 主内容 - 任务列表 */}
             <div className="lg:col-span-3">
-              <ThemedCard className="p-6">
+              <div className="rounded-3xl border border-stone-100 bg-white p-6 shadow-xl shadow-stone-200/50 dark:border-white/5 dark:bg-stone-900 dark:shadow-none">
                 <h2 className="mb-6 text-lg font-bold text-stone-900 dark:text-white">
                   {selectedProject 
                     ? projects.find(p => p.id === selectedProject)?.name || '项目'
@@ -450,12 +494,12 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
                     </div>
                   )}
                 </div>
-              </ThemedCard>
+              </div>
             </div>
           </div>
         ) : (
           /* 日历视图 */
-          <ThemedCard className="p-6">
+          <div className="rounded-3xl border border-stone-100 bg-white p-6 shadow-xl shadow-stone-200/50 dark:border-white/5 dark:bg-stone-900 dark:shadow-none">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-lg font-bold text-stone-900 dark:text-white">
                 {currentMonth.getFullYear()}年{currentMonth.getMonth() + 1}月
@@ -496,6 +540,23 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
               {calendarData.map((day, index) => {
                 const isCurrentMonth = day.date.getMonth() === currentMonth.getMonth()
                 const isToday = day.date.toDateString() === new Date().toDateString()
+                const dayStr = day.date.toISOString().split('T')[0]
+                
+                // 检查该日期处于哪些项目的时间段内
+                const activeProjects = projects.filter(p => {
+                  if (!p.start_date && !p.end_date) return false
+                  const startDate = p.start_date ? p.start_date.split('T')[0] : null
+                  const endDate = p.end_date ? p.end_date.split('T')[0] : null
+                  
+                  if (startDate && endDate) {
+                    return dayStr >= startDate && dayStr <= endDate
+                  } else if (startDate) {
+                    return dayStr >= startDate
+                  } else if (endDate) {
+                    return dayStr <= endDate
+                  }
+                  return false
+                })
                 
                 return (
                   <div
@@ -511,8 +572,30 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
                     }`}>
                       {day.date.getDate()}
                     </div>
+                    
+                    {/* 项目时间条 */}
+                    {activeProjects.length > 0 && (
+                      <div className="mb-1 space-y-0.5">
+                        {activeProjects.slice(0, 2).map(project => {
+                          const startDate = project.start_date ? project.start_date.split('T')[0] : null
+                          const endDate = project.end_date ? project.end_date.split('T')[0] : null
+                          const isStart = startDate === dayStr
+                          const isEnd = endDate === dayStr
+                          
+                          return (
+                            <div
+                              key={project.id}
+                              className={`h-1.5 ${isStart ? 'rounded-l-full' : ''} ${isEnd ? 'rounded-r-full' : ''} ${!isStart && !isEnd ? '' : ''}`}
+                              style={{ backgroundColor: project.color }}
+                              title={`${project.name}${startDate ? ` (${startDate}` : ''}${endDate ? ` - ${endDate})` : startDate ? ')' : ''}`}
+                            />
+                          )
+                        })}
+                      </div>
+                    )}
+                    
                     <div className="space-y-1">
-                      {day.tasks.slice(0, 3).map(task => {
+                      {day.tasks.slice(0, 2).map(task => {
                         const project = projects.find(p => p.id === task.project_id)
                         return (
                           <div
@@ -527,15 +610,15 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
                           </div>
                         )
                       })}
-                      {day.tasks.length > 3 && (
-                        <div className="text-xs text-stone-400">+{day.tasks.length - 3} 更多</div>
+                      {day.tasks.length > 2 && (
+                        <div className="text-xs text-stone-400">+{day.tasks.length - 2} 更多</div>
                       )}
                     </div>
                   </div>
                 )
               })}
             </div>
-          </ThemedCard>
+          </div>
         )}
       </div>
 
@@ -580,6 +663,7 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
                   {PROJECT_COLORS.map(color => (
                     <button
                       key={color}
+                      type="button"
                       onClick={() => setNewProjectColor(color)}
                       className={`size-8 rounded-full transition ${
                         newProjectColor === color ? 'ring-2 ring-offset-2 ring-stone-400' : ''
@@ -587,6 +671,35 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
                       style={{ backgroundColor: color }}
                     />
                   ))}
+                </div>
+              </div>
+
+              {/* 项目时间段 */}
+              <div>
+                <label className="mb-2 block text-sm font-medium text-stone-700 dark:text-stone-300">
+                  项目时间段
+                </label>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <label className="mb-1 block text-xs text-stone-500 dark:text-stone-400">开始日期</label>
+                    <input
+                      type="date"
+                      value={newProjectStartDate}
+                      onChange={(e) => setNewProjectStartDate(e.target.value)}
+                      className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-900 outline-none transition focus:border-amber-400 dark:border-stone-600 dark:bg-stone-700 dark:text-white dark:[color-scheme:dark]"
+                    />
+                  </div>
+                  <span className="mt-5 text-stone-400">→</span>
+                  <div className="flex-1">
+                    <label className="mb-1 block text-xs text-stone-500 dark:text-stone-400">截止日期</label>
+                    <input
+                      type="date"
+                      value={newProjectEndDate}
+                      onChange={(e) => setNewProjectEndDate(e.target.value)}
+                      min={newProjectStartDate}
+                      className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-900 outline-none transition focus:border-amber-400 dark:border-stone-600 dark:bg-stone-700 dark:text-white dark:[color-scheme:dark]"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -614,8 +727,10 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
                 取消
               </button>
               <button
+                type="button"
                 onClick={editingProject ? updateProject : createProject}
-                className="rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-amber-600"
+                disabled={!newProjectName.trim()}
+                className="rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {editingProject ? '保存' : '创建'}
               </button>

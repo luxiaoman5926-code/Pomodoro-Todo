@@ -52,9 +52,9 @@ const TomatoProgress = ({ count, size = 24, showTooltip = true }: TomatoProgress
         {/* 番茄主体 - 带填充效果 */}
         <ellipse
           cx="12"
-          cy="13"
-          rx="9"
-          ry="8"
+          cy="12.5"
+          rx="8.5"
+          ry="7.5"
           fill={`url(#tomato-fill-${progress})`}
           stroke={colors.stroke}
           strokeWidth="1.5"
@@ -62,14 +62,14 @@ const TomatoProgress = ({ count, size = 24, showTooltip = true }: TomatoProgress
 
         {/* 番茄叶子 */}
         <path
-          d="M12 5C12 5 10 3 8 4C6 5 7 7 7 7"
+          d="M12 5C12 5 10 3.5 8.5 4.5C7 5.5 7.5 7 7.5 7"
           fill="none"
           stroke="#22c55e"
           strokeWidth="1.5"
           strokeLinecap="round"
         />
         <path
-          d="M12 5C12 5 14 3 16 4C18 5 17 7 17 7"
+          d="M12 5C12 5 14 3.5 15.5 4.5C17 5.5 16.5 7 16.5 7"
           fill="none"
           stroke="#22c55e"
           strokeWidth="1.5"
@@ -78,7 +78,7 @@ const TomatoProgress = ({ count, size = 24, showTooltip = true }: TomatoProgress
         
         {/* 番茄茎 */}
         <path
-          d="M12 5V3"
+          d="M12 5V3.5"
           stroke="#16a34a"
           strokeWidth="2"
           strokeLinecap="round"
@@ -89,7 +89,7 @@ const TomatoProgress = ({ count, size = 24, showTooltip = true }: TomatoProgress
           cx="9"
           cy="10"
           rx="1.5"
-          ry="2"
+          ry="1.5"
           fill="white"
           opacity="0.3"
         />

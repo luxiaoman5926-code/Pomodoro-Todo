@@ -25,10 +25,11 @@ import {
   PencilSimple,
   Check,
   ArrowsOutSimple,
+  FolderSimple,
 } from '@phosphor-icons/react'
 import ThemedCard from './ThemedCard'
 import TomatoProgress from './TomatoProgress'
-import type { Task, TaskPriority, Subtask, TransferItem } from '../types'
+import type { Task, TaskPriority, Subtask, TransferItem, Project } from '../types'
 import { supabase } from '../supabase'
 import { usePomodoroContext } from '../hooks/usePomodoroContext'
 import { useTransfers } from '../hooks/useTransfers'
@@ -91,9 +92,17 @@ const TodoList = ({ userId, onExpand }: TodoListProps) => {
   const [newTags, setNewTags] = useState<string[]>([])
   const [newLinkIds, setNewLinkIds] = useState<string[]>([])
   const [newDueDate, setNewDueDate] = useState('') // 截止日期
+  const [newProjectId, setNewProjectId] = useState<string | null>(null) // 项目ID
   const [showAddOptions, setShowAddOptions] = useState(false)
   const [showTagSelector, setShowTagSelector] = useState(false)
   const [showLinkSelector, setShowLinkSelector] = useState(false)
+  const [showProjectSelector, setShowProjectSelector] = useState(false)
+  const [showCreateProject, setShowCreateProject] = useState(false)
+  const [newProjectName, setNewProjectName] = useState('')
+  const [newProjectColor, setNewProjectColor] = useState('#3b82f6')
+  
+  // 项目状态
+  const [projects, setProjects] = useState<Project[]>([])
   
   // 筛选状态
   const [filterTag, setFilterTag] = useState<string | null>(null)
@@ -101,6 +110,7 @@ const TodoList = ({ userId, onExpand }: TodoListProps) => {
   const { selectedTask, setSelectedTask, registerTaskUpdater, registerAddTask, settings } = usePomodoroContext()
   const { items: transferItems, refresh: refreshTransfers } = useTransfers(userId)
   const inputRef = useRef<HTMLInputElement>(null)
+  const inputContainerRef = useRef<HTMLDivElement>(null)
 
   // 注册任务更新函数
   useEffect(() => {
@@ -143,7 +153,22 @@ const TodoList = ({ userId, onExpand }: TodoListProps) => {
       setIsLoading(false)
     }
 
+    const fetchProjects = async () => {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching projects:', error)
+      } else if (data) {
+        setProjects(data)
+      }
+    }
+
     fetchTodos()
+    fetchProjects()
     refreshTransfers() // 获取传输文件以供链接
 
     // 订阅实时更新
@@ -237,6 +262,40 @@ const TodoList = ({ userId, onExpand }: TodoListProps) => {
     setNewTags(newTags.filter((t) => t !== tag))
   }
 
+  // 项目颜色选项
+  const PROJECT_COLORS = [
+    '#ef4444', '#f97316', '#f59e0b', '#eab308', 
+    '#84cc16', '#22c55e', '#10b981', '#14b8a6',
+    '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1',
+    '#8b5cf6', '#a855f7', '#d946ef', '#ec4899',
+  ]
+
+  // 创建项目
+  const handleCreateProject = async () => {
+    const name = newProjectName.trim()
+    if (!name) return
+
+    const { data, error } = await supabase
+      .from('projects')
+      .insert([{
+        name,
+        color: newProjectColor,
+        user_id: userId,
+      }])
+      .select()
+
+    if (error) {
+      console.error('Error creating project:', error)
+    } else if (data && data[0]) {
+      setProjects(prev => [data[0], ...prev])
+      setNewProjectId(data[0].id)
+      setNewProjectName('')
+      setNewProjectColor('#3b82f6')
+      setShowCreateProject(false)
+      setShowProjectSelector(false)
+    }
+  }
+
   const resetAddForm = () => {
     setText('')
     setNewPriority('medium')
@@ -245,6 +304,7 @@ const TodoList = ({ userId, onExpand }: TodoListProps) => {
     setNewLinkIds([])
     setNewTag('')
     setNewDueDate('')
+    setNewProjectId(null)
     setShowAddOptions(false)
   }
 
@@ -266,7 +326,8 @@ const TodoList = ({ userId, onExpand }: TodoListProps) => {
           tags: newTags,
           subtasks: [],
           transfer_ids: newLinkIds,
-          due_date: newDueDate ? new Date(newDueDate).toISOString() : null, // Add due_date if needed in DB schema
+          due_date: newDueDate ? new Date(newDueDate).toISOString() : null,
+          project_id: newProjectId,
         },
       ])
       .select()
@@ -298,6 +359,34 @@ const TodoList = ({ userId, onExpand }: TodoListProps) => {
     }
     registerAddTask(addTaskHandler)
   }, [registerAddTask, activeTab])
+
+  // 点击外部收起输入框（如果没有输入内容）
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // 关闭项目选择器下拉
+      if (showProjectSelector) {
+        setShowProjectSelector(false)
+      }
+      
+      if (
+        inputContainerRef.current &&
+        !inputContainerRef.current.contains(event.target as Node) &&
+        showAddOptions &&
+        !text.trim() &&
+        newTags.length === 0 &&
+        newLinkIds.length === 0 &&
+        !newDueDate &&
+        !newProjectId
+      ) {
+        setShowAddOptions(false)
+        setNewPriority('medium')
+        setNewEstimatedTime(25)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showAddOptions, showProjectSelector, text, newTags, newLinkIds, newDueDate, newProjectId])
 
   // 更新任务（通用）
   const updateTask = async (taskId: string, updates: Partial<Task>) => {
@@ -562,14 +651,24 @@ const TodoList = ({ userId, onExpand }: TodoListProps) => {
           )}
 
           {/* 输入框及选项 */}
-          <div className="mb-6 rounded-3xl border border-stone-200 bg-stone-50 px-5 py-4 transition-all focus-within:border-stone-300 focus-within:bg-white focus-within:shadow-lg focus-within:shadow-stone-100/50 dark:border-white/5 dark:bg-stone-800/50 dark:focus-within:border-white/10 dark:focus-within:bg-stone-800 flex-shrink-0">
+          <div 
+            ref={inputContainerRef}
+            className={`mb-6 rounded-2xl border bg-stone-50/80 transition-all duration-300 flex-shrink-0 ${
+              showAddOptions 
+                ? 'border-stone-200 bg-white shadow-lg shadow-stone-200/50 dark:border-white/10 dark:bg-stone-800 dark:shadow-none px-4 py-4' 
+                : 'border-stone-100 hover:border-stone-200 hover:bg-white dark:border-white/5 dark:bg-stone-800/50 dark:hover:border-white/10 px-4 py-3'
+            }`}
+          >
             <form onSubmit={handleAddTask}>
               <div className="flex flex-col gap-3">
+                {/* 输入行 */}
                 <div className="flex items-center gap-3">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-stone-300 dark:border-stone-600" />
+                  <div className={`flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors ${
+                    showAddOptions ? 'border-stone-300 dark:border-stone-500' : 'border-stone-200 dark:border-stone-600'
+                  }`} />
                   <input
                     ref={inputRef}
-                    className="w-full bg-transparent py-1 text-lg text-stone-800 placeholder:text-stone-400 focus:outline-none dark:text-stone-100 dark:placeholder:text-stone-500"
+                    className="w-full bg-transparent text-base text-stone-800 placeholder:text-stone-400 focus:outline-none dark:text-stone-100 dark:placeholder:text-stone-500"
                     placeholder="输入下一项任务..."
                     value={text}
                     onChange={(event) => setText(event.target.value)}
@@ -578,139 +677,262 @@ const TodoList = ({ userId, onExpand }: TodoListProps) => {
                   />
                 </div>
                 
-                {/* 扩展选项 */}
+                {/* 扩展选项 - 两行布局 */}
                 {showAddOptions && (
-                  <div className="flex flex-wrap items-center gap-3 pt-2 pl-9">
-                    {/* 优先级 */}
-                    <div className="flex items-center gap-1 rounded-full bg-stone-100 p-1 dark:bg-white/5">
-                      {(['low', 'medium', 'high'] as const).map((p) => (
-                        <button
-                          key={p}
-                          type="button"
-                          onClick={() => setNewPriority(p)}
-                          className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${
-                            newPriority === p
-                              ? 'bg-white text-stone-900 shadow-sm dark:bg-stone-700 dark:text-white'
-                              : 'text-stone-400 hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300'
-                          }`}
-                          title={PRIORITY_MAP[p].label}
-                        >
-                          <div className="flex items-center gap-1">
-                            <Flag size={14} weight={newPriority === p ? 'fill' : 'regular'} className={newPriority === p ? PRIORITY_MAP[p].color : ''} />
+                  <>
+                    {/* 第一行：优先级、时间、日期 */}
+                    <div className="flex flex-wrap items-center gap-2 pl-8 border-t border-stone-100 dark:border-white/5 pt-3">
+                      {/* 优先级选择器 */}
+                      <div className="flex items-center rounded-full bg-stone-100/80 p-0.5 dark:bg-white/5">
+                        {(['low', 'medium', 'high'] as const).map((p) => (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => setNewPriority(p)}
+                            className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-all ${
+                              newPriority === p
+                                ? 'bg-white text-stone-800 shadow-sm dark:bg-stone-700 dark:text-white'
+                                : 'text-stone-400 hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300'
+                            }`}
+                            title={PRIORITY_MAP[p].label}
+                          >
+                            <Flag size={12} weight={newPriority === p ? 'fill' : 'regular'} className={newPriority === p ? PRIORITY_MAP[p].color : ''} />
                             {newPriority === p && <span>{PRIORITY_MAP[p].label}</span>}
-                          </div>
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* 预估时间 */}
+                      <div className="flex items-center gap-1 rounded-full bg-stone-100/80 px-2.5 py-1 dark:bg-white/5" title="预计时间(分钟)">
+                        <Clock size={12} className="text-stone-400 dark:text-stone-500" />
+                        <input
+                          type="number"
+                          min="1"
+                          value={newEstimatedTime}
+                          onChange={(e) => setNewEstimatedTime(e.target.value === '' ? '' : parseInt(e.target.value))}
+                          onBlur={() => {
+                              const val = Number(newEstimatedTime)
+                              if (!val || val < 1) setNewEstimatedTime(1)
+                          }}
+                          className="w-7 bg-transparent text-center text-xs font-medium outline-none dark:text-white"
+                        />
+                        <span className="text-xs text-stone-400 dark:text-stone-500">m</span>
+                      </div>
+
+                      {/* 截止日期 */}
+                      <div className="flex items-center gap-1 rounded-full bg-stone-100/80 px-2.5 py-1 dark:bg-white/5">
+                        <ClockCounterClockwise size={12} className="text-stone-400 dark:text-stone-500" />
+                        <input
+                          type="date"
+                          value={newDueDate}
+                          onChange={(e) => setNewDueDate(e.target.value)}
+                          className="bg-transparent text-xs font-medium outline-none dark:text-white dark:[color-scheme:dark] w-24"
+                          placeholder="年/月/日"
+                        />
+                      </div>
+                    </div>
+
+                    {/* 第二行：标签、Link、添加按钮 */}
+                    <div className="flex flex-wrap items-center gap-2 pl-8">
+                      {/* 标签输入 */}
+                      <div className="relative flex items-center gap-1.5 rounded-full bg-stone-100/80 px-2.5 py-1 dark:bg-white/5">
+                        <button 
+                          type="button"
+                          onClick={() => setShowTagSelector(true)}
+                          className="text-stone-400 hover:text-stone-600 dark:text-stone-500 dark:hover:text-white transition-colors"
+                          title="选择已有标签"
+                        >
+                          <ListChecks size={12} weight="bold" />
                         </button>
-                      ))}
-                    </div>
+                        <div className="h-3 w-px bg-stone-200 dark:bg-white/10" />
+                        <TagIcon size={12} className="text-stone-400 dark:text-stone-500" />
+                        <input
+                          className="w-16 bg-transparent text-xs outline-none dark:text-white placeholder:text-stone-400 dark:placeholder:text-stone-500"
+                          placeholder="标签"
+                          value={newTag}
+                          onChange={(e) => setNewTag(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
+                          onBlur={() => setTimeout(() => handleAddTag(), 100)}
+                        />
+                        {/* 标签建议下拉 */}
+                        {newTag && tagSuggestions.length > 0 && (
+                          <div className="absolute left-0 top-full z-10 mt-1 max-h-32 w-32 overflow-y-auto rounded-lg border border-stone-100 bg-white shadow-lg dark:border-white/10 dark:bg-stone-800">
+                            {tagSuggestions.map(tag => (
+                              <button
+                                key={tag}
+                                type="button"
+                                className="w-full px-2 py-1 text-left text-xs hover:bg-stone-50 dark:text-white dark:hover:bg-white/5"
+                                onMouseDown={(e) => {
+                                  e.preventDefault()
+                                  handleAddTag(tag)
+                                }}
+                              >
+                                #{tag}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
 
-                    {/* 预估时间 (分钟) */}
-                    <div className="flex items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1.5 dark:bg-white/5" title="预计时间(分钟)">
-                      <Clock size={14} className="text-stone-400 dark:text-stone-500" />
-                      <input
-                        type="number"
-                        min="1"
-                        value={newEstimatedTime}
-                        onChange={(e) => setNewEstimatedTime(e.target.value === '' ? '' : parseInt(e.target.value))}
-                        onBlur={() => {
-                            const val = Number(newEstimatedTime)
-                            if (!val || val < 1) setNewEstimatedTime(1)
-                        }}
-                        className="w-8 bg-transparent text-center text-xs font-medium outline-none dark:text-white"
-                      />
-                      <span className="text-xs text-stone-400 dark:text-stone-500">m</span>
-                    </div>
+                      {/* 关联文件选择器 */}
+                      {transferItems.length > 0 && (
+                        <button 
+                            type="button"
+                            onClick={() => setShowLinkSelector(true)}
+                            className="flex items-center gap-1 rounded-full bg-stone-100/80 px-2.5 py-1 text-xs text-stone-500 hover:bg-stone-200 dark:bg-white/5 dark:text-mist dark:hover:bg-white/10 transition-colors"
+                        >
+                             <Paperclip size={12} />
+                             Link
+                        </button>
+                      )}
 
-                    {/* 截止日期 */}
-                    <div className="flex items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1.5 dark:bg-white/5 relative group">
-                      <ClockCounterClockwise size={14} className="text-stone-400 dark:text-stone-500" />
-                      <input
-                        type="date"
-                        value={newDueDate}
-                        onChange={(e) => setNewDueDate(e.target.value)}
-                        className="bg-transparent text-xs font-medium outline-none dark:text-white dark:[color-scheme:dark] w-24"
-                      />
-                    </div>
+                      {/* 项目文件夹选择器 */}
+                      <div className="relative">
+                        <button 
+                            type="button"
+                            onClick={() => setShowProjectSelector(!showProjectSelector)}
+                            className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition-colors ${
+                              newProjectId 
+                                ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300' 
+                                : 'bg-stone-100/80 text-stone-500 hover:bg-stone-200 dark:bg-white/5 dark:text-mist dark:hover:bg-white/10'
+                            }`}
+                        >
+                             <FolderSimple size={12} weight={newProjectId ? 'fill' : 'regular'} />
+                             {newProjectId ? projects.find(p => p.id === newProjectId)?.name || '项目' : '项目'}
+                             {newProjectId && (
+                               <button 
+                                 type="button"
+                                 onClick={(e) => { e.stopPropagation(); setNewProjectId(null); }}
+                                 className="hover:opacity-70"
+                               >
+                                 <X size={10} />
+                               </button>
+                             )}
+                        </button>
+                        {/* 项目下拉选择 */}
+                        {showProjectSelector && (
+                          <div className="absolute left-0 top-full z-10 mt-1 w-52 rounded-lg border border-stone-100 bg-white shadow-lg dark:border-white/10 dark:bg-stone-800">
+                            {/* 新建项目表单 */}
+                            {showCreateProject ? (
+                              <div className="p-3 space-y-3">
+                                <input
+                                  autoFocus
+                                  type="text"
+                                  placeholder="项目名称"
+                                  value={newProjectName}
+                                  onChange={(e) => setNewProjectName(e.target.value)}
+                                  onKeyDown={(e) => e.key === 'Enter' && handleCreateProject()}
+                                  className="w-full rounded-md border border-stone-200 px-2.5 py-1.5 text-xs outline-none focus:border-blue-400 dark:border-white/10 dark:bg-stone-700 dark:text-white"
+                                />
+                                <div className="flex flex-wrap gap-1.5">
+                                  {PROJECT_COLORS.map(color => (
+                                    <button
+                                      key={color}
+                                      type="button"
+                                      onClick={() => setNewProjectColor(color)}
+                                      className={`w-5 h-5 rounded-full transition-transform ${newProjectColor === color ? 'scale-125 ring-2 ring-offset-1 ring-stone-400' : 'hover:scale-110'}`}
+                                      style={{ backgroundColor: color }}
+                                    />
+                                  ))}
+                                </div>
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={handleCreateProject}
+                                    disabled={!newProjectName.trim()}
+                                    className="flex-1 rounded-md bg-blue-500 px-2 py-1 text-xs font-medium text-white hover:bg-blue-600 disabled:opacity-50"
+                                  >
+                                    创建
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => { setShowCreateProject(false); setNewProjectName(''); }}
+                                    className="rounded-md bg-stone-100 px-2 py-1 text-xs text-stone-600 hover:bg-stone-200 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
+                                  >
+                                    取消
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                {/* 新建项目按钮 */}
+                                <button
+                                  type="button"
+                                  className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-500/10 border-b border-stone-100 dark:border-white/10"
+                                  onMouseDown={(e) => {
+                                    e.preventDefault()
+                                    setShowCreateProject(true)
+                                  }}
+                                >
+                                  <Plus size={12} weight="bold" />
+                                  <span>新建项目</span>
+                                </button>
+                                {/* 项目列表 */}
+                                <div className="max-h-32 overflow-y-auto">
+                                  {projects.length === 0 ? (
+                                    <div className="px-3 py-2 text-xs text-stone-400 dark:text-mist">暂无项目</div>
+                                  ) : (
+                                    projects.map(project => (
+                                      <button
+                                        key={project.id}
+                                        type="button"
+                                        className={`w-full flex items-center gap-2 px-3 py-2 text-left text-xs hover:bg-stone-50 dark:hover:bg-white/5 ${
+                                          newProjectId === project.id ? 'bg-blue-50 dark:bg-blue-500/10' : ''
+                                        }`}
+                                        onMouseDown={(e) => {
+                                          e.preventDefault()
+                                          setNewProjectId(newProjectId === project.id ? null : project.id)
+                                          setShowProjectSelector(false)
+                                        }}
+                                      >
+                                        <span 
+                                          className="w-2.5 h-2.5 rounded-full flex-shrink-0" 
+                                          style={{ backgroundColor: project.color }}
+                                        />
+                                        <span className="truncate dark:text-white">{project.name}</span>
+                                        {newProjectId === project.id && (
+                                          <Check size={12} className="ml-auto text-blue-500" weight="bold" />
+                                        )}
+                                      </button>
+                                    ))
+                                  )}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
 
-                    {/* 标签输入 */}
-                    <div className="relative flex items-center gap-2 rounded-full bg-stone-100 px-3 py-1.5 dark:bg-white/5">
-                      <button 
-                        type="button"
-                        onClick={() => setShowTagSelector(true)}
-                        className="text-stone-400 hover:text-stone-600 dark:text-stone-500 dark:hover:text-white transition-colors"
-                        title="选择已有标签"
-                      >
-                        <ListChecks size={14} weight="bold" />
-                      </button>
-                      <div className="h-3 w-px bg-stone-300 dark:bg-white/10" />
-                      <TagIcon size={14} className="text-stone-400 dark:text-stone-500" />
-                      <input
-                        className="w-20 bg-transparent text-xs outline-none dark:text-white placeholder:text-stone-400 dark:placeholder:text-stone-500"
-                        placeholder="标签"
-                        value={newTag}
-                        onChange={(e) => setNewTag(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
-                        onBlur={() => setTimeout(() => handleAddTag(), 100)}
-                      />
-                      {/* 标签建议下拉 */}
-                      {newTag && tagSuggestions.length > 0 && (
-                        <div className="absolute left-0 top-full z-10 mt-1 max-h-32 w-32 overflow-y-auto rounded-lg border border-stone-100 bg-white shadow-lg dark:border-white/10 dark:bg-stone-800">
-                          {tagSuggestions.map(tag => (
-                            <button
-                              key={tag}
-                              type="button"
-                              className="w-full px-2 py-1 text-left text-xs hover:bg-stone-50 dark:text-white dark:hover:bg-white/5"
-                              onMouseDown={(e) => {
-                                e.preventDefault() // 防止 blur
-                                handleAddTag(tag)
-                              }}
-                            >
-                              #{tag}
-                            </button>
-                          ))}
+                      {/* 已选标签展示 - 内联在同一行 */}
+                      {newTags.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1">
+                          {newTags.map((tag) => {
+                              const colorStyle = isColorfulTags ? getTagColor(tag) : { bg: 'bg-stone-100', text: 'text-stone-600' }
+                              return (
+                                <span key={tag} className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${colorStyle.bg} ${colorStyle.text}`}>
+                                  #{tag}
+                                  <button type="button" onClick={() => handleRemoveTag(tag)} className="hover:opacity-70">
+                                    <X size={10} />
+                                  </button>
+                                </span>
+                              )
+                          })}
                         </div>
                       )}
-                    </div>
 
-                    {/* 关联文件选择器 (New Task) */}
-                    {transferItems.length > 0 && (
-                      <button 
-                          type="button"
-                          onClick={() => setShowLinkSelector(true)}
-                          className="flex items-center gap-1 rounded bg-stone-100 px-1.5 py-0.5 text-[10px] text-stone-500 hover:bg-stone-200 dark:bg-white/5 dark:text-mist dark:hover:bg-white/10"
+                      <div className="flex-1" />
+
+                      {/* 添加按钮 */}
+                      <button
+                        type="submit"
+                        disabled={isAdding || !text.trim()}
+                        className="flex items-center gap-1.5 rounded-full bg-stone-800 px-4 py-1.5 text-xs font-bold text-white transition-all hover:bg-stone-700 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:hover:scale-100 disabled:hover:bg-stone-800 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-white"
                       >
-                           <Paperclip size={10} />
-                           Link
+                        {isAdding ? <Spinner className="animate-spin" size={12} /> : <Plus weight="bold" size={12} />}
+                        添加任务
                       </button>
-                    )}
-
-                    <div className="flex-1" />
-
-                    <button
-                      type="submit"
-                      disabled={isAdding || !text.trim()}
-                      className="ml-auto flex items-center gap-1.5 rounded-full bg-stone-900 px-4 py-1.5 text-xs font-bold text-white transition-transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 dark:bg-stone-100 dark:text-stone-900"
-                    >
-                      {isAdding ? <Spinner className="animate-spin" size={14} /> : <Plus weight="bold" size={14} />}
-                      添加任务
-                    </button>
-                  </div>
-                )}
-                
-                {/* 已选标签展示 */}
-                {showAddOptions && newTags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 pl-9">
-                    {newTags.map((tag) => {
-                        const colorStyle = isColorfulTags ? getTagColor(tag) : { bg: 'bg-stone-100', text: 'text-stone-600' }
-                        return (
-                          <span key={tag} className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] ${colorStyle.bg} ${colorStyle.text}`}>
-                            #{tag}
-                            <button type="button" onClick={() => handleRemoveTag(tag)} className="hover:opacity-70">
-                              <X size={10} />
-                            </button>
-                          </span>
-                        )
-                    })}
-                  </div>
+                    </div>
+                  </>
                 )}
               </div>
             </form>
@@ -742,6 +964,7 @@ const TodoList = ({ userId, onExpand }: TodoListProps) => {
                   transferItems={transferItems}
                   isColorfulTags={isColorfulTags}
                   allTags={allTags}
+                  projects={projects}
                 />
               ))
             )}
@@ -856,9 +1079,10 @@ type TaskItemProps = {
   transferItems?: TransferItem[]
   isColorfulTags?: boolean
   allTags?: string[]
+  projects?: Project[]
 }
 
-const TaskItem = ({ task, isSelected, onToggle, onDelete, onSelect, onUpdate, transferItems = [], isColorfulTags = true, allTags = [] }: TaskItemProps) => {
+const TaskItem = ({ task, isSelected, onToggle, onDelete, onSelect, onUpdate, transferItems = [], isColorfulTags = true, allTags = [], projects = [] }: TaskItemProps) => {
   const [isExpanded, setIsExpanded] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   
@@ -867,14 +1091,20 @@ const TaskItem = ({ task, isSelected, onToggle, onDelete, onSelect, onUpdate, tr
   const [editPriority, setEditPriority] = useState<TaskPriority>(task.priority || 'medium')
   const [editEstimate, setEditEstimate] = useState<number | string>(task.estimated_time || 25)
   const [editTags, setEditTags] = useState<string[]>(task.tags || [])
+  const [editProjectId, setEditProjectId] = useState<string | null>(task.project_id || null)
   const [newTagInput, setNewTagInput] = useState('')
   const [subtaskText, setSubtaskText] = useState('')
   const [showTagSelector, setShowTagSelector] = useState(false)
   const [showLinkSelector, setShowLinkSelector] = useState(false)
+  const [showProjectSelectorEdit, setShowProjectSelectorEdit] = useState(false)
   
   // Subtask editing state
   const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null)
   const [editSubtaskValue, setEditSubtaskValue] = useState('')
+  
+  // Tag inline editing state
+  const [editingTagIndex, setEditingTagIndex] = useState<number | null>(null)
+  const [editTagValue, setEditTagValue] = useState('')
   
   // Reset edit states when entering editing
   useEffect(() => {
@@ -883,6 +1113,7 @@ const TaskItem = ({ task, isSelected, onToggle, onDelete, onSelect, onUpdate, tr
       setEditPriority(task.priority || 'medium')
       setEditEstimate(task.estimated_time || 25)
       setEditTags(task.tags || [])
+      setEditProjectId(task.project_id || null)
     }
   }, [isEditing, task])
 
@@ -896,6 +1127,37 @@ const TaskItem = ({ task, isSelected, onToggle, onDelete, onSelect, onUpdate, tr
   const startEditingSubtask = (subtask: Subtask) => {
     setEditingSubtaskId(subtask.id)
     setEditSubtaskValue(subtask.text)
+  }
+
+  // 开始编辑标签
+  const startEditingTag = (index: number, tag: string) => {
+    setEditingTagIndex(index)
+    setEditTagValue(tag)
+  }
+
+  // 保存标签编辑
+  const saveTagEdit = () => {
+    if (editingTagIndex === null) return
+    
+    const newTagValue = editTagValue.trim()
+    if (newTagValue && task.tags) {
+      // 检查是否与其他标签重复
+      const otherTags = task.tags.filter((_, i) => i !== editingTagIndex)
+      if (!otherTags.includes(newTagValue)) {
+        const updatedTags = task.tags.map((t, i) => 
+          i === editingTagIndex ? newTagValue : t
+        )
+        onUpdate({ tags: updatedTags })
+      }
+    }
+    setEditingTagIndex(null)
+    setEditTagValue('')
+  }
+
+  // 取消标签编辑
+  const cancelTagEdit = () => {
+    setEditingTagIndex(null)
+    setEditTagValue('')
   }
 
   const saveSubtask = () => {
@@ -930,6 +1192,11 @@ const TaskItem = ({ task, isSelected, onToggle, onDelete, onSelect, onUpdate, tr
     // Simple array comparison for tags
     if (JSON.stringify(editTags.sort()) !== JSON.stringify(task.tags?.sort() || [])) {
       updates.tags = editTags
+      hasChanges = true
+    }
+    // 项目更改
+    if (editProjectId !== (task.project_id || null)) {
+      updates.project_id = editProjectId
       hasChanges = true
     }
 
@@ -1091,6 +1358,64 @@ const TaskItem = ({ task, isSelected, onToggle, onDelete, onSelect, onUpdate, tr
                         Link
                     </button>
                   )}
+
+                  {/* 项目选择器 */}
+                  <div className="relative">
+                    <button 
+                        type="button"
+                        onClick={() => setShowProjectSelectorEdit(!showProjectSelectorEdit)}
+                        className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] transition-colors ${
+                          editProjectId 
+                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300' 
+                            : 'bg-stone-100 text-stone-500 hover:bg-stone-200 dark:bg-white/5 dark:text-mist dark:hover:bg-white/10'
+                        }`}
+                    >
+                         <FolderSimple size={10} weight={editProjectId ? 'fill' : 'regular'} />
+                         {editProjectId ? (projects.find(p => p.id === editProjectId)?.name?.slice(0, 6) || '项目') : '项目'}
+                         {editProjectId && (
+                           <button 
+                             type="button"
+                             onClick={(e) => { e.stopPropagation(); setEditProjectId(null); }}
+                             className="hover:opacity-70"
+                           >
+                             <X size={8} />
+                           </button>
+                         )}
+                    </button>
+                    {/* 项目下拉 */}
+                    {showProjectSelectorEdit && (
+                      <div className="absolute left-0 top-full z-20 mt-1 w-40 rounded-lg border border-stone-100 bg-white shadow-lg dark:border-white/10 dark:bg-stone-800">
+                        <div className="max-h-32 overflow-y-auto">
+                          {projects.length === 0 ? (
+                            <div className="px-2 py-1.5 text-[10px] text-stone-400 dark:text-mist">暂无项目</div>
+                          ) : (
+                            projects.map(project => (
+                              <button
+                                key={project.id}
+                                type="button"
+                                className={`w-full flex items-center gap-1.5 px-2 py-1.5 text-left text-[10px] hover:bg-stone-50 dark:hover:bg-white/5 ${
+                                  editProjectId === project.id ? 'bg-blue-50 dark:bg-blue-500/10' : ''
+                                }`}
+                                onClick={() => {
+                                  setEditProjectId(editProjectId === project.id ? null : project.id)
+                                  setShowProjectSelectorEdit(false)
+                                }}
+                              >
+                                <span 
+                                  className="w-2 h-2 rounded-full flex-shrink-0" 
+                                  style={{ backgroundColor: project.color }}
+                                />
+                                <span className="truncate dark:text-white">{project.name}</span>
+                                {editProjectId === project.id && (
+                                  <Check size={10} className="ml-auto text-blue-500" weight="bold" />
+                                )}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* 标签展示 */}
@@ -1164,11 +1489,49 @@ const TaskItem = ({ task, isSelected, onToggle, onDelete, onSelect, onUpdate, tr
                       {priorityStyle.label}
                     </span>
                   )}
-                  
-                  {task.tags?.map((tag) => {
-                    const colorStyle = isColorfulTags ? getTagColor(tag) : { bg: 'bg-stone-100 dark:bg-white/10', text: 'text-stone-500 dark:text-mist' }
+
+                  {/* 项目标识 */}
+                  {task.project_id && (() => {
+                    const project = projects.find(p => p.id === task.project_id)
+                    if (!project) return null
                     return (
-                      <span key={tag} className={`rounded-md px-2 py-1 text-[11px] font-medium ${colorStyle.bg} ${colorStyle.text}`}>
+                      <span 
+                        className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium bg-stone-100 text-stone-600 dark:bg-white/10 dark:text-stone-300"
+                      >
+                        <span 
+                          className="w-2 h-2 rounded-full flex-shrink-0" 
+                          style={{ backgroundColor: project.color }}
+                        />
+                        {project.name}
+                      </span>
+                    )
+                  })()}
+                  
+                  {task.tags?.map((tag, index) => {
+                    const colorStyle = isColorfulTags ? getTagColor(tag) : { bg: 'bg-stone-100 dark:bg-white/10', text: 'text-stone-500 dark:text-mist' }
+                    const isEditingThisTag = editingTagIndex === index
+                    
+                    return isEditingThisTag ? (
+                      <input
+                        key={`edit-${index}`}
+                        autoFocus
+                        type="text"
+                        value={editTagValue}
+                        onChange={(e) => setEditTagValue(e.target.value)}
+                        onBlur={saveTagEdit}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') saveTagEdit()
+                          if (e.key === 'Escape') cancelTagEdit()
+                        }}
+                        className={`rounded-md px-2 py-0.5 text-[11px] font-medium outline-none ring-2 ring-amber-400 ${colorStyle.bg} ${colorStyle.text} w-20`}
+                      />
+                    ) : (
+                      <span 
+                        key={tag} 
+                        onDoubleClick={() => !task.completed && startEditingTag(index, tag)}
+                        className={`rounded-md px-2 py-1 text-[11px] font-medium cursor-pointer select-none transition-opacity hover:opacity-80 ${colorStyle.bg} ${colorStyle.text}`}
+                        title="双击编辑标签"
+                      >
                         #{tag}
                       </span>
                     )
