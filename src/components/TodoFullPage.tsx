@@ -4,21 +4,14 @@ import {
   Plus,
   Calendar,
   FolderSimple,
-  CaretDown,
-  CaretRight,
   Circle,
   CheckCircle,
-  Trash,
   X,
-  PencilSimple,
-  Check,
   CalendarBlank,
   DotsThree,
 } from '@phosphor-icons/react'
-import ThemedCard from './ThemedCard'
-import type { Task, Project, TaskPriority } from '../types'
+import type { Task, Project } from '../types'
 import { supabase } from '../supabase'
-import { usePomodoroContext } from '../hooks/usePomodoroContext'
 
 type TodoFullPageProps = {
   userId: string
@@ -53,7 +46,6 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
   const [isLoading, setIsLoading] = useState(true)
   const [activeView, setActiveView] = useState<'list' | 'calendar'>('list')
   const [selectedProject, setSelectedProject] = useState<string | null>(null)
-  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set(['inbox']))
   const [showProjectModal, setShowProjectModal] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [newProjectName, setNewProjectName] = useState('')
@@ -61,8 +53,6 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
   const [newProjectStartDate, setNewProjectStartDate] = useState('')
   const [newProjectEndDate, setNewProjectEndDate] = useState('')
   const [currentMonth, setCurrentMonth] = useState(new Date())
-
-  const { settings } = usePomodoroContext()
 
   // 获取任务
   const fetchTasks = async () => {
@@ -286,16 +276,6 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
 
     return days
   }, [currentMonth, tasks])
-
-  const toggleProjectExpand = (projectId: string) => {
-    const newExpanded = new Set(expandedProjects)
-    if (newExpanded.has(projectId)) {
-      newExpanded.delete(projectId)
-    } else {
-      newExpanded.add(projectId)
-    }
-    setExpandedProjects(newExpanded)
-  }
 
   const openEditProject = (project: Project) => {
     setEditingProject(project)
