@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { usePomodoroContext } from '../hooks/usePomodoroContext'
-import { Clock, Play, SpeakerHigh, Palette } from '@phosphor-icons/react'
+import { Clock, Play, Palette } from '@phosphor-icons/react'
 import ThemedCard from './ThemedCard'
 
 const Settings = () => {

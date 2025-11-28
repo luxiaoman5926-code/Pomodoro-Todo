@@ -187,26 +187,6 @@ export const useTransfers = (userId: string | null) => {
         return item
       }))
 
-      const { error } = await supabase
-        .from('transfers')
-        .update({
-          metadata: {
-            // We need to fetch current metadata first or rely on partial update if jsonb merges?
-            // Supabase jsonb updates replace the whole object usually unless using specialized functions.
-            // So we better make sure we have the other metadata preserved.
-            // Since we did optimistic update, we can assume `items` has the latest structure but wait...
-            // Actually, let's just update the specific field using jsonb_set if possible or just fetch-update-push.
-            // For simplicity here, we'll assume we're just updating the name in the jsonb blob.
-            // We need to get the current item to preserve other metadata fields like size/mimeType.
-            // The optimistic update handles the UI. For DB, we might need a more robust approach or 
-            // assume the current state in `items` is valid to send back (risky if stale).
-            // A safer way for a simple field update inside JSONB without fetching first is complex in simple update calls.
-            // Let's fetch the specific item first to be safe, or just use the item from state if we trust it.
-             name: newName
-          }
-        }) // Wait, this will replace metadata with JUST {name: newName}. We need to merge.
-        // Let's actually query the item from the state to merge.
-      
       // Correct approach:
       const itemToUpdate = items.find(i => i.id === id)
       if (!itemToUpdate) return

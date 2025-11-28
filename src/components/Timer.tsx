@@ -3,7 +3,6 @@ import { Coffee, Pause, Play, ArrowCounterClockwise, SkipForward, Sun, Target, P
 import { usePomodoro } from '../hooks/usePomodoro'
 import { usePomodoroContext } from '../hooks/usePomodoroContext'
 import type { PomodoroPhase } from '../types'
-import NoisePlayer from './NoisePlayer'
 import ThemedCard from './ThemedCard'
 
 // 阶段对应的图标和颜色配置
