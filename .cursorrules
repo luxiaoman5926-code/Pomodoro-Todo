@@ -22,13 +22,27 @@
 
 # Design System (Material Design 3 Inspired)
 - **Aesthetic**: Modern, clean, spacious, "Google-like".
-- **Shapes**: Generous rounded corners (`rounded-3xl` for cards, `rounded-full` for buttons/inputs/pills).
+- **Shapes**: Generous rounded corners (`rounded-3xl` for cards, `rounded-2xl` for smaller cards, `rounded-xl` for inputs, `rounded-full` for buttons/pills).
 - **Typography**: Large, bold headings (`text-5xl`, `text-3xl`), legible body text (`text-base`), readable inputs (`text-lg`).
 - **Visuals**: 
   - Circular Timer Ring (SVG) with breathing animation (`animate-pulse-slow`).
   - Soft shadows (`shadow-xl`, `shadow-stone-200/50`).
   - Minimalist color palette: Stone (Base), Amber (Focus), Emerald (Short Break), Amber/Orange (Long Break).
-- **Interactions**: Smooth transitions, hover effects (scale/lift), drag-and-drop for files.
+- **Dark Mode Color Palette** (defined in `tailwind.config.js`):
+  - `coal` (#0F1115): Base background
+  - `graphite` (#1C1E26): Card background
+  - `ash` (#23252B): Secondary background / borders
+  - `fog` (#F7F8F8): Primary text color
+  - `mist` (#8A8F98): Secondary text color
+  - **Border visibility**: Use `dark:border-white/20` or higher opacity for better visibility
+  - **Text contrast**: Use `dark:text-fog` for primary text, `dark:text-mist` for secondary text
+  - **Backgrounds**: Prefer `dark:bg-graphite` for cards, `dark:bg-ash` for secondary elements
+- **Component Width Standards**:
+  - For consistent component sizes in form rows, use fixed widths: `w-20`, `w-24`, `w-28`, `w-32`
+  - Time inputs should be at least `w-20` to ensure numbers display correctly
+  - Icons should use `flex-shrink-0` to prevent compression
+  - Text should use `truncate` for overflow handling
+- **Interactions**: Smooth transitions, hover effects (scale/lift), drag-and-drop for files, click-outside-to-close for dropdowns.
 
 # Project Structure
 ```
@@ -45,32 +59,44 @@ src/
 │   ├── NoisePlayer.tsx     # White Noise (Currently hidden)
 │   ├── ThemedCard.tsx      # Standard Card Container
 │   ├── Timer.tsx           # Circular Pomodoro Timer
-│   ├── TodoList.tsx        # Advanced Task List (Subtasks, Tags, Due Date)
-│   ├── TomatoProgress.tsx  # Progress Icon
+│   ├── TodoList.tsx        # Advanced Task List (Subtasks, Tags, Due Date, Tag Selection)
+│   ├── TodoFullPage.tsx    # Full Page Task Management (Projects, Calendar View, Task Editing)
+│   ├── TomatoProgress.tsx  # Progress Icon (supports up to 99 pomodoros)
 │   ├── UserMenu.tsx        # User Profile
 │   ├── Statistics.tsx      # Stats Dashboard
 │   ├── Heatmap.tsx         # Focus Heatmap
 │   ├── ReportCard.tsx      # Stats Report
 │   ├── TaskHistory.tsx     # Completed Tasks
 │   ├── Transfer.tsx        # Cross-device File Transfer
-│   └── Settings.tsx        # User Preferences
-└── hooks/                  # Custom Hooks
-    ├── useAuth.ts          # Authentication
-    ├── usePomodoro.ts      # Timer Logic
-    ├── usePomodoroContext.tsx  # Global Context
-    ├── useTheme.ts         # Dark/Light Mode
-    ├── useStatistics.ts    # Stats Data Fetching (Optimized)
-    ├── useTransfers.ts     # File Transfer Logic (Optimized)
-    ├── useSettings.ts      # Settings Management
-    ├── useNotifications.ts # Browser Notifications
-    └── useKeyboardShortcuts.ts # Hotkeys
+│   ├── Settings.tsx        # User Preferences
+│   ├── ToolsPage.tsx       # Tools Page (Grid Layout)
+│   ├── ToolCard.tsx        # Tool Card Component
+│   ├── ToolModal.tsx       # Tool Modal Container
+│   └── tools/              # Individual Tool Components
+│       └── TranslationTool.tsx  # AI Multi-language Translation Tool
+├── hooks/                  # Custom Hooks
+│   ├── useAuth.ts          # Authentication
+│   ├── usePomodoro.ts      # Timer Logic
+│   ├── usePomodoroContext.tsx  # Global Context
+│   ├── useTheme.ts         # Dark/Light Mode
+│   ├── useStatistics.ts    # Stats Data Fetching (Optimized)
+│   ├── useTransfers.ts     # File Transfer Logic (Optimized)
+│   ├── useSettings.ts      # Settings Management
+│   ├── useNotifications.ts # Browser Notifications
+│   └── useKeyboardShortcuts.ts # Hotkeys
+├── utils/                  # Utility Functions
+│   └── tools.ts            # Tool Registration System
+└── services/               # External API Services
+    └── translation.ts      # Google Translate API Service
 ```
 
 # Database Schema (Supabase)
 
 ## Tables
 - **todos**: 
-  - `id` (UUID), `text`, `completed`, `pomodoros` (count), `tags` (array), `priority` (low/med/high), `estimated_time` (int), `due_date` (timestamp), `subtasks` (jsonb), `transfer_ids` (array), `user_id`, `created_at`, `completed_at`.
+  - `id` (UUID), `text`, `completed`, `pomodoros` (count, 0-99), `tags` (array), `priority` (low/medium/high), `estimated_time` (int), `due_date` (timestamp), `subtasks` (jsonb), `transfer_ids` (array), `project_id` (UUID, nullable), `user_id`, `created_at`, `completed_at`.
+- **projects**: 
+  - `id` (UUID), `user_id`, `name`, `color`, `start_date` (timestamp, nullable), `end_date` (timestamp, nullable), `created_at`.
 - **pomodoro_sessions**: 
   - `id` (UUID), `user_id`, `task_id`, `date`, `duration_seconds`, `phase`, `created_at`.
 - **user_settings**: 
@@ -81,18 +107,66 @@ src/
 # Key Features
 1.  **Timer**: Circular visual progress, custom durations, phase switching, auto-start options.
 2.  **Todo List**: 
-    - Add tasks with Priority, Estimate, Tags, Due Date.
+    - Add tasks with Priority, Estimate, Tags, Due Date, Project assignment.
     - Subtasks (editable, deletable).
     - Link files from Transfer to Tasks.
+    - Tag selection from existing tags (via ListChecks button).
     - Drag & Drop sorting (planned/implied).
-3.  **Statistics**: Weekly/Monthly reports, Heatmap, efficiency analysis.
-4.  **Transfer**: Cross-platform file sharing via Supabase Storage with signed URLs.
-5.  **Theming**: System/Manual Dark Mode support.
+3.  **Todo Full Page (Task Management)**:
+    - List and Calendar views for tasks.
+    - Project management (create, edit, filter by project).
+    - Inline task editing with all task properties.
+    - Tag selection from existing tags in edit mode.
+    - Consistent component sizing and layout.
+4.  **Projects**: 
+    - Create and manage projects with custom colors.
+    - Project start/end dates for time-bound projects.
+    - Filter tasks by project.
+5.  **Statistics**: Weekly/Monthly reports, Heatmap, efficiency analysis.
+6.  **Transfer**: Cross-platform file sharing via Supabase Storage with signed URLs.
+7.  **Theming**: System/Manual Dark Mode support with optimized contrast and visibility.
+8.  **Pomodoro Count**: Supports up to 99 pomodoros per task, with visual progress indicator.
+9.  **Tools Page**: 
+    - Grid layout for displaying various web tools.
+    - Tool registration system for easy extensibility.
+    - Search and category filtering.
+    - Modal-based tool interface.
+    - Currently includes: AI Multi-language Translation Tool (Google Translate API).
+    - Planned tools: Document/Image/Audio/Video converters (client-side and server-side).
 
 # Development Guidelines
 - **Performance**: 
-  - Use `React.lazy` for non-critical tabs (Statistics, Transfer, Settings).
+  - Use `React.lazy` for non-critical tabs (Statistics, Transfer, Settings, Tools).
   - Batch API calls (e.g., `createSignedUrls` in Transfer).
   - Consolidated queries (e.g., Statistics fetching).
+  - Use `useMemo` for expensive computations (e.g., tag collection, task grouping).
+  - Use `useCallback` for functions passed as props to prevent unnecessary re-renders.
 - **Database**: Use RPCs where possible for complex aggregations.
-- **UX**: Prioritize "Optimistic UI" updates for responsiveness.
+- **UX**: 
+  - Prioritize "Optimistic UI" updates for responsiveness.
+  - Implement click-outside-to-close for dropdowns/modals using `useRef` and `useEffect`.
+  - Always provide visual feedback for user actions (hover states, transitions).
+- **Component Patterns**:
+  - For dropdowns/popovers: Use `useRef` for container element, check `contains(event.target)` in click handler.
+  - For consistent component sizing: Group related components in rows with fixed widths (`w-20`, `w-24`, `w-28`).
+  - For tag/selection inputs: Always provide both manual input and selection from existing options.
+  - For icon+text combinations: Ensure icons use `flex-shrink-0` and text uses `truncate` for proper layout.
+- **Dark Mode Best Practices**:
+  - Always test dark mode styles alongside light mode.
+  - Use semantic color classes: `dark:bg-graphite`, `dark:text-fog`, `dark:border-white/20`.
+  - Ensure sufficient contrast for accessibility.
+  - Update border opacity to at least `dark:border-white/20` for visibility.
+- **Session Persistence**:
+  - Supabase auth sessions are persisted in localStorage.
+  - Use `getSession()` on app init to restore sessions.
+  - Configure Supabase client with `auth.storage` and `auth.storageKey` explicitly.
+- **Tool Development**:
+  - All tools should be placed in `src/components/tools/` directory.
+  - Register tools in `src/utils/tools.ts` using `registerTool()` function.
+  - Tools automatically appear in ToolsPage with search and filtering.
+  - Use `ToolModal` component for tool interface container.
+  - External API services should be placed in `src/services/` directory.
+  - Environment variables for API keys should use `VITE_` prefix (e.g., `VITE_GOOGLE_TRANSLATE_API_KEY`).
+  - Tools can be categorized for better organization (e.g., '语言工具', '文档工具', '媒体工具').
+  - Client-side tools (no server resources): Document/Image/Audio converters using browser APIs.
+  - Server-side tools (require backend): Video converters, video-to-audio (need API endpoints or third-party services).

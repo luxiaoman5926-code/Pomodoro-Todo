@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import type { FormEvent } from 'react'
 import {
   CheckCircle,
@@ -111,6 +111,29 @@ const TodoList = ({ userId, onExpand }: TodoListProps) => {
   const { items: transferItems, refresh: refreshTransfers } = useTransfers(userId)
   const inputRef = useRef<HTMLInputElement>(null)
   const inputContainerRef = useRef<HTMLDivElement>(null)
+  const projectSelectorRef = useRef<HTMLDivElement>(null)
+
+  // 格式化总时长为 "1h25m" 格式
+  const formatTotalDuration = useCallback((pomodoros: number) => {
+    if (!pomodoros || !settings) return ''
+    
+    // 每个番茄钟的时长（分钟）= focus_duration（秒）/ 60
+    const pomodoroDurationMinutes = Math.floor(settings.focus_duration / 60)
+    const totalMinutes = pomodoros * pomodoroDurationMinutes
+    
+    if (totalMinutes === 0) return ''
+    
+    const hours = Math.floor(totalMinutes / 60)
+    const minutes = totalMinutes % 60
+    
+    if (hours > 0 && minutes > 0) {
+      return `${hours}h${minutes}m`
+    } else if (hours > 0) {
+      return `${hours}h`
+    } else {
+      return `${minutes}m`
+    }
+  }, [settings])
 
   // 注册任务更新函数
   useEffect(() => {
@@ -334,13 +357,18 @@ const TodoList = ({ userId, onExpand }: TodoListProps) => {
 
     if (error) {
       console.error('Error adding todo:', error)
-    } else if (data) {
-      // 实时订阅会处理状态更新，但为了反应更快，这里也可以手动加
-      // setTasks((prev) => [data[0], ...prev]) 
-      // 由于开启了 insert 订阅，这里不需要手动 set，否则可能重复（虽然有去重逻辑）
+      setIsAdding(false)
+    } else if (data && data[0]) {
+      // 乐观更新：立即添加到列表（实时订阅有延迟）
+      // 实时订阅中有去重逻辑，不会重复添加
+      setTasks((prev) => {
+        // 检查是否已存在（防止实时订阅已经添加了）
+        if (prev.some((t) => t.id === data[0].id)) return prev
+        return [data[0], ...prev]
+      })
       resetAddForm()
+      setIsAdding(false)
     }
-    setIsAdding(false)
   }
 
   // 注册添加任务函数供快捷键使用
@@ -360,14 +388,15 @@ const TodoList = ({ userId, onExpand }: TodoListProps) => {
     registerAddTask(addTaskHandler)
   }, [registerAddTask, activeTab])
 
-  // 点击外部收起输入框（如果没有输入内容）
+  // 点击外部收起输入框和关闭弹出窗口
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      // 关闭项目选择器下拉
-      if (showProjectSelector) {
+      // 关闭项目选择器下拉（只有在点击外部时）
+      if (showProjectSelector && projectSelectorRef.current && !projectSelectorRef.current.contains(event.target as Node)) {
         setShowProjectSelector(false)
       }
       
+      // 关闭输入框扩展选项（如果没有输入内容）
       if (
         inputContainerRef.current &&
         !inputContainerRef.current.contains(event.target as Node) &&
@@ -655,8 +684,8 @@ const TodoList = ({ userId, onExpand }: TodoListProps) => {
             ref={inputContainerRef}
             className={`mb-6 rounded-2xl border bg-stone-50/80 transition-all duration-300 flex-shrink-0 ${
               showAddOptions 
-                ? 'border-stone-200 bg-white shadow-lg shadow-stone-200/50 dark:border-white/10 dark:bg-stone-800 dark:shadow-none px-4 py-4' 
-                : 'border-stone-100 hover:border-stone-200 hover:bg-white dark:border-white/5 dark:bg-stone-800/50 dark:hover:border-white/10 px-4 py-3'
+                ? 'border-stone-200 bg-white shadow-lg shadow-stone-200/50 dark:border-white/20 dark:bg-graphite dark:shadow-none px-4 py-4' 
+                : 'border-stone-100 hover:border-stone-200 hover:bg-white dark:border-white/20 dark:bg-graphite/50 dark:hover:border-white/30 px-4 py-3'
             }`}
           >
             <form onSubmit={handleAddTask}>
@@ -681,7 +710,7 @@ const TodoList = ({ userId, onExpand }: TodoListProps) => {
                 {showAddOptions && (
                   <>
                     {/* 第一行：优先级、时间、日期 */}
-                    <div className="flex flex-wrap items-center gap-2 pl-8 border-t border-stone-100 dark:border-white/5 pt-3">
+                    <div className="flex flex-wrap items-center gap-2 pl-8 border-t border-stone-100 dark:border-white/20 pt-3">
                       {/* 优先级选择器 */}
                       <div className="flex items-center rounded-full bg-stone-100/80 p-0.5 dark:bg-white/5">
                         {(['low', 'medium', 'high'] as const).map((p) => (
@@ -756,7 +785,7 @@ const TodoList = ({ userId, onExpand }: TodoListProps) => {
                         />
                         {/* 标签建议下拉 */}
                         {newTag && tagSuggestions.length > 0 && (
-                          <div className="absolute left-0 top-full z-10 mt-1 max-h-32 w-32 overflow-y-auto rounded-lg border border-stone-100 bg-white shadow-lg dark:border-white/10 dark:bg-stone-800">
+                          <div className="absolute left-0 top-full z-10 mt-1 max-h-32 w-32 overflow-y-auto rounded-lg border border-stone-100 bg-white shadow-lg dark:border-white/20 dark:bg-graphite">
                             {tagSuggestions.map(tag => (
                               <button
                                 key={tag}
@@ -787,7 +816,7 @@ const TodoList = ({ userId, onExpand }: TodoListProps) => {
                       )}
 
                       {/* 项目文件夹选择器 */}
-                      <div className="relative">
+                      <div className="relative" ref={projectSelectorRef}>
                         <button 
                             type="button"
                             onClick={() => setShowProjectSelector(!showProjectSelector)}
@@ -811,7 +840,7 @@ const TodoList = ({ userId, onExpand }: TodoListProps) => {
                         </button>
                         {/* 项目下拉选择 */}
                         {showProjectSelector && (
-                          <div className="absolute left-0 top-full z-10 mt-1 w-52 rounded-lg border border-stone-100 bg-white shadow-lg dark:border-white/10 dark:bg-stone-800">
+                          <div className="absolute left-0 top-full z-10 mt-1 w-52 rounded-lg border border-stone-100 bg-white shadow-lg dark:border-white/20 dark:bg-graphite">
                             {/* 新建项目表单 */}
                             {showCreateProject ? (
                               <div className="p-3 space-y-3">
@@ -822,7 +851,7 @@ const TodoList = ({ userId, onExpand }: TodoListProps) => {
                                   value={newProjectName}
                                   onChange={(e) => setNewProjectName(e.target.value)}
                                   onKeyDown={(e) => e.key === 'Enter' && handleCreateProject()}
-                                  className="w-full rounded-md border border-stone-200 px-2.5 py-1.5 text-xs outline-none focus:border-blue-400 dark:border-white/10 dark:bg-stone-700 dark:text-white"
+                                  className="w-full rounded-md border border-stone-200 px-2.5 py-1.5 text-xs outline-none focus:border-blue-400 dark:border-white/30 dark:bg-ash dark:text-fog"
                                 />
                                 <div className="flex flex-wrap gap-1.5">
                                   {PROJECT_COLORS.map(color => (
@@ -858,7 +887,7 @@ const TodoList = ({ userId, onExpand }: TodoListProps) => {
                                 {/* 新建项目按钮 */}
                                 <button
                                   type="button"
-                                  className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-500/10 border-b border-stone-100 dark:border-white/10"
+                                  className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-500/10 border-b border-stone-100 dark:border-white/20"
                                   onMouseDown={(e) => {
                                     e.preventDefault()
                                     setShowCreateProject(true)
@@ -965,6 +994,7 @@ const TodoList = ({ userId, onExpand }: TodoListProps) => {
                   isColorfulTags={isColorfulTags}
                   allTags={allTags}
                   projects={projects}
+                  formatTotalDuration={formatTotalDuration}
                 />
               ))
             )}
@@ -1002,7 +1032,7 @@ const TodoList = ({ userId, onExpand }: TodoListProps) => {
                         <div className="flex items-center gap-1">
                           <TomatoProgress count={task.pomodoros || 0} size={14} />
                           <span className="text-stone-500 dark:text-mist">
-                            {task.pomodoros || 0}
+                            {formatTotalDuration(task.pomodoros || 0) || '0m'}
                           </span>
                         </div>
                         <div className="hidden sm:flex items-center gap-1">
@@ -1080,9 +1110,10 @@ type TaskItemProps = {
   isColorfulTags?: boolean
   allTags?: string[]
   projects?: Project[]
+  formatTotalDuration?: (pomodoros: number) => string
 }
 
-const TaskItem = ({ task, isSelected, onToggle, onDelete, onSelect, onUpdate, transferItems = [], isColorfulTags = true, allTags = [], projects = [] }: TaskItemProps) => {
+const TaskItem = ({ task, isSelected, onToggle, onDelete, onSelect, onUpdate, transferItems = [], isColorfulTags = true, allTags = [], projects = [], formatTotalDuration }: TaskItemProps) => {
   const [isExpanded, setIsExpanded] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   
@@ -1097,6 +1128,8 @@ const TaskItem = ({ task, isSelected, onToggle, onDelete, onSelect, onUpdate, tr
   const [showTagSelector, setShowTagSelector] = useState(false)
   const [showLinkSelector, setShowLinkSelector] = useState(false)
   const [showProjectSelectorEdit, setShowProjectSelectorEdit] = useState(false)
+  
+  const projectSelectorEditRef = useRef<HTMLDivElement>(null)
   
   // Subtask editing state
   const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null)
@@ -1116,6 +1149,22 @@ const TaskItem = ({ task, isSelected, onToggle, onDelete, onSelect, onUpdate, tr
       setEditProjectId(task.project_id || null)
     }
   }, [isEditing, task])
+
+  // 点击外部关闭项目选择器
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (projectSelectorEditRef.current && !projectSelectorEditRef.current.contains(event.target as Node)) {
+        setShowProjectSelectorEdit(false)
+      }
+    }
+
+    if (showProjectSelectorEdit) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [showProjectSelectorEdit])
 
   const priorityKey = (task.priority && PRIORITY_MAP[task.priority]) ? task.priority : 'medium'
   const priorityStyle = PRIORITY_MAP[priorityKey]
@@ -1261,7 +1310,7 @@ const TaskItem = ({ task, isSelected, onToggle, onDelete, onSelect, onUpdate, tr
           ? 'border-amber-300 bg-amber-50 shadow-md shadow-amber-100/50 dark:border-amber-500/50 dark:bg-amber-900/20 dark:shadow-none'
           : task.completed
           ? 'border-transparent bg-stone-50/50 opacity-60 hover:opacity-100 dark:bg-white/5'
-          : 'border-stone-100 bg-white shadow-sm hover:border-stone-200 hover:shadow-lg hover:shadow-stone-100/50 dark:border-white/5 dark:bg-stone-800 dark:hover:border-white/10 dark:hover:bg-stone-800/80 dark:shadow-none'
+          : 'border-stone-100 bg-white shadow-sm hover:border-stone-200 hover:shadow-lg hover:shadow-stone-100/50 dark:border-white/20 dark:bg-graphite dark:hover:border-white/30 dark:hover:bg-graphite/90 dark:shadow-none'
       } ${isSelected ? '' : 'border-l-[6px] ' + (priorityStyle?.border?.replace('border', 'border-l') || 'border-l-stone-200')}`}
     >
       <div className="flex items-start justify-between gap-3">
@@ -1360,7 +1409,7 @@ const TaskItem = ({ task, isSelected, onToggle, onDelete, onSelect, onUpdate, tr
                   )}
 
                   {/* 项目选择器 */}
-                  <div className="relative">
+                  <div className="relative" ref={projectSelectorEditRef}>
                     <button 
                         type="button"
                         onClick={() => setShowProjectSelectorEdit(!showProjectSelectorEdit)}
@@ -1384,7 +1433,7 @@ const TaskItem = ({ task, isSelected, onToggle, onDelete, onSelect, onUpdate, tr
                     </button>
                     {/* 项目下拉 */}
                     {showProjectSelectorEdit && (
-                      <div className="absolute left-0 top-full z-20 mt-1 w-40 rounded-lg border border-stone-100 bg-white shadow-lg dark:border-white/10 dark:bg-stone-800">
+                      <div className="absolute left-0 top-full z-20 mt-1 w-40 rounded-lg border border-stone-100 bg-white shadow-lg dark:border-white/20 dark:bg-graphite">
                         <div className="max-h-32 overflow-y-auto">
                           {projects.length === 0 ? (
                             <div className="px-2 py-1.5 text-[10px] text-stone-400 dark:text-mist">暂无项目</div>
@@ -1471,11 +1520,11 @@ const TaskItem = ({ task, isSelected, onToggle, onDelete, onSelect, onUpdate, tr
                     
                     {/* 进度信息 (紧凑模式) */}
                     <div className="flex items-center gap-2 ml-auto flex-shrink-0 pt-1">
-                        <div className="flex items-center gap-1.5 bg-stone-100 dark:bg-stone-800 rounded-full px-2 py-0.5">
+                        <div className="flex items-center gap-1.5 bg-stone-100 dark:bg-ash rounded-full px-2 py-0.5">
                             <TomatoProgress count={task.pomodoros || 0} size={14} />
-                            {/* 预计时间/总番茄数 */}
+                            {/* 总用时 */}
                             <span className="text-xs text-stone-500 dark:text-stone-400 font-medium">
-                                {task.estimated_time ? `${task.estimated_time}m` : `/${task.estimated_pomodoros || 1}`}
+                                {formatTotalDuration ? formatTotalDuration(task.pomodoros || 0) || '0m' : '0m'}
                             </span>
                         </div>
                     </div>
@@ -1601,7 +1650,7 @@ const TaskItem = ({ task, isSelected, onToggle, onDelete, onSelect, onUpdate, tr
 
       {/* 子任务区域 */}
       {isExpanded && (
-        <div className="mt-3 border-t border-stone-100 pt-2 dark:border-white/5 pl-1">
+        <div className="mt-3 border-t border-stone-100 pt-2 dark:border-white/20 pl-1">
           <div className="space-y-1">
             {task.subtasks?.map(subtask => (
               <div key={subtask.id} className="group/sub flex items-center gap-3 py-1">
@@ -1740,7 +1789,7 @@ const SelectionModal = <T,>({ title, isOpen, onClose, items, selectedIds, onTogg
   if (!isOpen) return null
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm p-4">
-      <div className="w-full max-w-sm rounded-xl bg-white p-4 shadow-xl dark:bg-stone-800 ring-1 ring-stone-900/5 animate-in fade-in zoom-in duration-200">
+      <div className="w-full max-w-sm rounded-xl bg-white p-4 shadow-xl dark:bg-graphite dark:border dark:border-white/20 animate-in fade-in zoom-in duration-200">
          <div className="mb-4 flex items-center justify-between">
             <h3 className="font-bold text-stone-700 dark:text-white">{title}</h3>
             <button onClick={onClose} className="p-1 text-stone-400 hover:text-stone-600 dark:text-mist dark:hover:text-white bg-transparent border-none cursor-pointer"><X size={16} /></button>
@@ -1833,7 +1882,7 @@ const TagManagementModal = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm p-4">
-      <div className="w-full max-w-sm rounded-xl bg-white p-4 shadow-xl dark:bg-stone-800 ring-1 ring-stone-900/5 animate-in fade-in zoom-in duration-200">
+      <div className="w-full max-w-sm rounded-xl bg-white p-4 shadow-xl dark:bg-graphite dark:border dark:border-white/20 animate-in fade-in zoom-in duration-200">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="font-bold text-stone-700 dark:text-white">管理标签</h3>
           <button 

@@ -1,5 +1,5 @@
 type TomatoProgressProps = {
-  /** 已完成的番茄钟数量 (0-4) */
+  /** 已完成的番茄钟数量 (0-99) */
   count: number
   /** 图标大小 */
   size?: number
@@ -9,14 +9,19 @@ type TomatoProgressProps = {
 
 /**
  * 番茄进度图标组件
- * 显示0-4个番茄钟的进度：灰色(0) → 1/4 → 2/4 → 3/4 → 满(4)
+ * 显示0-99个番茄钟的进度：
+ * - 0-4个：显示填充进度（灰色(0) → 1/4 → 2/4 → 3/4 → 满(4)）
+ * - 5-99个：显示满状态，数字徽章显示实际数量
  */
 const TomatoProgress = ({ count, size = 24, showTooltip = true }: TomatoProgressProps) => {
-  // 限制在0-4范围内
-  const progress = Math.min(Math.max(count, 0), 4)
+  // 限制在0-99范围内
+  const actualCount = Math.min(Math.max(count, 0), 99)
+  
+  // 对于显示进度，最多显示4个的进度
+  const progress = Math.min(actualCount, 4)
   
   // 计算填充百分比 (0, 25, 50, 75, 100)
-  const fillPercent = (progress / 4) * 100
+  const fillPercent = actualCount >= 4 ? 100 : (progress / 4) * 100
 
   // 根据进度选择颜色
   const getColor = () => {
@@ -26,11 +31,18 @@ const TomatoProgress = ({ count, size = 24, showTooltip = true }: TomatoProgress
   }
 
   const colors = getColor()
+  
+  // 生成提示文本
+  const tooltipText = showTooltip 
+    ? actualCount >= 4 
+      ? `已完成 ${actualCount} 个番茄钟`
+      : `已完成 ${actualCount}/4 个番茄钟`
+    : undefined
 
   return (
     <div 
       className="relative inline-flex items-center justify-center"
-      title={showTooltip ? `已完成 ${progress}/4 个番茄钟` : undefined}
+      title={tooltipText}
     >
       <svg 
         width={size} 
@@ -96,9 +108,13 @@ const TomatoProgress = ({ count, size = 24, showTooltip = true }: TomatoProgress
       </svg>
 
       {/* 进度数字（小徽章） */}
-      {progress > 0 && (
-        <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white shadow-sm">
-          {progress}
+      {actualCount > 0 && (
+        <span className={`absolute -bottom-1 -right-1 flex items-center justify-center rounded-full bg-red-500 text-white font-bold shadow-sm ${
+          actualCount >= 10 
+            ? 'h-4 min-w-4 px-0.5 text-[8px]' 
+            : 'h-3.5 w-3.5 text-[9px]'
+        }`}>
+          {actualCount >= 99 ? '99+' : actualCount}
         </span>
       )}
     </div>

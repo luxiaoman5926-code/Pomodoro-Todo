@@ -127,7 +127,7 @@ const Timer = () => {
           className={`rounded-full px-5 py-2 text-sm font-bold transition-all ${
             phase === 'focus'
               ? 'bg-stone-900 text-white shadow-lg shadow-stone-900/20 dark:bg-white dark:text-stone-900 dark:shadow-none'
-              : 'bg-stone-100 text-stone-500 hover:bg-stone-200 dark:bg-white/5 dark:text-stone-400 dark:hover:bg-white/10'
+              : 'bg-stone-100 text-stone-500 hover:bg-stone-200 dark:bg-white/10 dark:text-mist dark:hover:bg-white/20'
           }`}
         >
           专注
@@ -138,7 +138,7 @@ const Timer = () => {
           className={`rounded-full px-5 py-2 text-sm font-bold transition-all ${
             phase === 'shortBreak'
               ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 dark:bg-emerald-500'
-              : 'bg-stone-100 text-stone-500 hover:bg-stone-200 dark:bg-white/5 dark:text-stone-400 dark:hover:bg-white/10'
+              : 'bg-stone-100 text-stone-500 hover:bg-stone-200 dark:bg-white/10 dark:text-mist dark:hover:bg-white/20'
           }`}
         >
           短休息
@@ -149,7 +149,7 @@ const Timer = () => {
           className={`rounded-full px-5 py-2 text-sm font-bold transition-all ${
             phase === 'longBreak'
               ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/20 dark:bg-amber-500'
-              : 'bg-stone-100 text-stone-500 hover:bg-stone-200 dark:bg-white/5 dark:text-stone-400 dark:hover:bg-white/10'
+              : 'bg-stone-100 text-stone-500 hover:bg-stone-200 dark:bg-white/10 dark:text-mist dark:hover:bg-white/20'
           }`}
         >
           长休息
@@ -217,7 +217,7 @@ const Timer = () => {
                 weight="duotone"
                 className={`${
                   phase === 'focus' 
-                    ? 'text-stone-500 dark:text-stone-400' 
+                    ? 'text-stone-500 dark:text-mist' 
                     : phase === 'shortBreak'
                       ? 'text-emerald-500 dark:text-emerald-400'
                       : 'text-amber-500 dark:text-amber-400'
@@ -229,7 +229,7 @@ const Timer = () => {
               {/* 减时按钮 */}
               <button
                 onClick={() => adjustSeconds(-60)}
-                className={`absolute -left-10 p-2 text-stone-300 transition-all hover:scale-110 hover:text-stone-500 dark:text-stone-600 dark:hover:text-stone-400 ${isRunning ? 'opacity-0 pointer-events-none' : 'opacity-0 group-hover:opacity-100'}`}
+                className={`absolute -left-10 p-2 text-stone-300 transition-all hover:scale-110 hover:text-stone-500 dark:text-mist dark:hover:text-fog ${isRunning ? 'opacity-0 pointer-events-none' : 'opacity-0 group-hover:opacity-100'}`}
                 title="减少 1 分钟"
               >
                 <Minus size={24} weight="bold" />
@@ -261,7 +261,7 @@ const Timer = () => {
               {/* 加时按钮 */}
               <button
                 onClick={() => adjustSeconds(60)}
-                className={`absolute -right-10 p-2 text-stone-300 transition-all hover:scale-110 hover:text-stone-500 dark:text-stone-600 dark:hover:text-stone-400 ${isRunning ? 'opacity-0 pointer-events-none' : 'opacity-0 group-hover:opacity-100'}`}
+                className={`absolute -right-10 p-2 text-stone-300 transition-all hover:scale-110 hover:text-stone-500 dark:text-mist dark:hover:text-fog ${isRunning ? 'opacity-0 pointer-events-none' : 'opacity-0 group-hover:opacity-100'}`}
                  title="增加 1 分钟"
               >
                 <Plus size={24} weight="bold" />
@@ -269,7 +269,7 @@ const Timer = () => {
             </div>
             
             <p
-              className={`mt-2 text-sm font-medium text-stone-400 dark:text-stone-500 ${isRunning ? 'animate-pulse' : ''}`}
+              className={`mt-2 text-sm font-medium text-stone-400 dark:text-mist ${isRunning ? 'animate-pulse' : ''}`}
             >
               {isEditingTime ? '按 Enter 确认' : phaseHint}
             </p>
@@ -305,7 +305,7 @@ const Timer = () => {
         <button
           type="button"
           onClick={skip}
-          className="col-span-1 flex h-14 items-center justify-center gap-1 rounded-2xl bg-stone-100 text-stone-700 transition-all hover:bg-stone-200 hover:-translate-y-1 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
+          className="col-span-1 flex h-14 items-center justify-center gap-1 rounded-2xl bg-stone-100 text-stone-700 transition-all hover:bg-stone-200 hover:-translate-y-1 dark:bg-ash dark:text-fog dark:hover:bg-white/10"
           title="跳过当前阶段"
         >
           <SkipForward size={24} weight="bold" />
@@ -315,7 +315,7 @@ const Timer = () => {
         <button
           type="button"
           onClick={reset}
-          className="col-span-1 flex h-14 items-center justify-center gap-1 rounded-2xl bg-stone-100 text-stone-700 transition-all hover:bg-stone-200 hover:-translate-y-1 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
+          className="col-span-1 flex h-14 items-center justify-center gap-1 rounded-2xl bg-stone-100 text-stone-700 transition-all hover:bg-stone-200 hover:-translate-y-1 dark:bg-ash dark:text-fog dark:hover:bg-white/10"
           title="重置当前阶段"
         >
           <ArrowCounterClockwise size={24} weight="bold" />

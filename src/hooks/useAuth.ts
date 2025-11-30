@@ -81,33 +81,56 @@ export const useAuth = () => {
     // 初始化认证状态
     const initAuth = async () => {
       try {
+        // 首先尝试从存储中恢复会话
+        const {
+          data: { session: existingSession },
+          error: sessionError,
+        } = await supabase.auth.getSession()
+
+        if (sessionError) {
+          console.error('获取会话失败:', sessionError)
+        }
+
+        // 如果有现有会话，先设置状态
+        if (existingSession && mounted) {
+          setAuthState({
+            user: existingSession.user,
+            session: existingSession,
+            loading: false,
+          })
+          console.log('从存储恢复登录会话:', existingSession.user?.email)
+        }
+
+        // 初始化认证（这会触发存储的会话恢复）
         const { error: initError } = await supabase.auth.initialize()
         if (initError) {
           console.error('初始化认证失败:', initError)
         }
 
+        // 处理 OAuth 回调（如果有）
         await handleOAuthCallback()
 
+        // 再次获取会话（OAuth 回调可能会更新会话）
         const {
-          data: { session },
-          error,
+          data: { session: finalSession },
+          error: finalError,
         } = await supabase.auth.getSession()
 
-        if (error) {
-          console.error('获取会话失败:', error)
+        if (finalError) {
+          console.error('获取最终会话失败:', finalError)
         }
 
         if (mounted) {
           setAuthState({
-            user: session?.user ?? null,
-            session,
+            user: finalSession?.user ?? null,
+            session: finalSession,
             loading: false,
           })
 
-          if (session) {
-            console.log('已有登录会话:', session.user?.email)
+          if (finalSession) {
+            console.log('已恢复登录会话:', finalSession.user?.email)
           } else {
-            console.log('未登录')
+            console.log('未找到登录会话')
           }
         }
       } catch (err) {
@@ -121,8 +144,23 @@ export const useAuth = () => {
     // 监听认证状态变化
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth 事件:', event, session?.user?.email)
+
+      // 处理 TOKEN_REFRESHED 事件，确保 token 刷新后状态更新
+      if (event === 'TOKEN_REFRESHED' && session) {
+        console.log('Token 已刷新')
+      }
+
+      // 处理 SIGNED_IN 事件
+      if (event === 'SIGNED_IN' && session) {
+        console.log('用户已登录:', session.user?.email)
+      }
+
+      // 处理 SIGNED_OUT 事件
+      if (event === 'SIGNED_OUT') {
+        console.log('用户已登出')
+      }
 
       if (mounted) {
         setAuthState({

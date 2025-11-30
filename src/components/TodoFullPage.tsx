@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import {
   ArrowLeft,
   Plus,
@@ -9,8 +9,17 @@ import {
   X,
   CalendarBlank,
   DotsThree,
+  Flag,
+  Clock,
+  Tag as TagIcon,
+  PencilSimple,
+  FloppyDisk,
+  XCircle,
+  ListChecks,
+  Paperclip,
+  ClockCounterClockwise,
 } from '@phosphor-icons/react'
-import type { Task, Project } from '../types'
+import type { Task, Project, TaskPriority } from '../types'
 import { supabase } from '../supabase'
 
 type TodoFullPageProps = {
@@ -35,10 +44,11 @@ const PROJECT_COLORS = [
 ]
 
 const PRIORITY_MAP = {
-  high: { color: 'text-red-500', bg: 'bg-red-50 dark:bg-red-500/10', label: '高' },
-  medium: { color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-500/10', label: '中' },
-  low: { color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-500/10', label: '低' },
+  high: { color: 'text-red-500', bg: 'bg-red-50 dark:bg-red-500/10', border: 'border-red-200', label: '高' },
+  medium: { color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-500/10', border: 'border-amber-200', label: '中' },
+  low: { color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-500/10', border: 'border-blue-200', label: '低' },
 }
+
 
 const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
   const [tasks, setTasks] = useState<Task[]>([])
@@ -188,14 +198,27 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
       .eq('id', taskId)
   }
 
+  // 更新任务（通用）
+  const updateTask = async (taskId: string, updates: Partial<Task>) => {
+    // 乐观更新
+    setTasks((prev) => prev.map(t => t.id === taskId ? { ...t, ...updates } : t))
+    
+    const { error } = await supabase
+      .from('todos')
+      .update(updates)
+      .eq('id', taskId)
+      .eq('user_id', userId)
+    
+    if (error) {
+      console.error('Error updating task:', error)
+      // 回滚（可选）
+      fetchTasks()
+    }
+  }
+
   // 更新任务截止日期
   const updateTaskDueDate = async (taskId: string, dueDate: string | null) => {
-    setTasks(tasks.map(t => t.id === taskId ? { ...t, due_date: dueDate } : t))
-    
-    await supabase
-      .from('todos')
-      .update({ due_date: dueDate })
-      .eq('id', taskId)
+    await updateTask(taskId, { due_date: dueDate })
   }
 
   // 切换任务完成状态
@@ -218,6 +241,15 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
       })
       .eq('id', taskId)
   }
+
+  // 收集所有现有标签
+  const allTags = useMemo(() => {
+    const tags = new Set<string>()
+    tasks.forEach(task => {
+      task.tags?.forEach(tag => tags.add(tag))
+    })
+    return Array.from(tags).sort()
+  }, [tasks])
 
   // 按项目分组的任务
   const groupedTasks = useMemo(() => {
@@ -297,12 +329,12 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-stone-950">
       {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-stone-200 bg-white/80 backdrop-blur-xl dark:border-stone-800 dark:bg-stone-900/80">
+      <header className="sticky top-0 z-40 border-b border-stone-200 bg-white/80 backdrop-blur-xl dark:border-white/20 dark:bg-graphite/80">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-4">
             <button
               onClick={onBack}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-stone-600 transition hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-stone-600 transition hover:bg-stone-100 dark:text-mist dark:hover:bg-ash"
             >
               <ArrowLeft size={20} weight="bold" />
               <span className="font-medium">返回</span>
@@ -315,8 +347,8 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
               onClick={() => setActiveView('list')}
               className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition ${
                 activeView === 'list'
-                  ? 'bg-stone-900 text-white dark:bg-white dark:text-stone-900'
-                  : 'text-stone-600 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800'
+                  ? 'bg-stone-900 text-white dark:bg-white dark:text-coal'
+                  : 'text-stone-600 hover:bg-stone-100 dark:text-mist dark:hover:bg-ash'
               }`}
             >
               <FolderSimple size={18} />
@@ -326,8 +358,8 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
               onClick={() => setActiveView('calendar')}
               className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition ${
                 activeView === 'calendar'
-                  ? 'bg-stone-900 text-white dark:bg-white dark:text-stone-900'
-                  : 'text-stone-600 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800'
+                  ? 'bg-stone-900 text-white dark:bg-white dark:text-coal'
+                  : 'text-stone-600 hover:bg-stone-100 dark:text-mist dark:hover:bg-ash'
               }`}
             >
               <Calendar size={18} />
@@ -342,9 +374,9 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-4 items-start">
             {/* 侧边栏 - 项目列表 */}
             <div className="lg:col-span-1">
-              <div className="rounded-3xl border border-stone-100 bg-white p-4 shadow-xl shadow-stone-200/50 dark:border-white/5 dark:bg-stone-900 dark:shadow-none">
+              <div className="rounded-3xl border border-stone-100 bg-white p-4 shadow-xl shadow-stone-200/50 dark:border-white/20 dark:bg-graphite dark:shadow-none">
                 <div className="mb-4 flex items-center justify-between">
-                  <h2 className="text-sm font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+                  <h2 className="text-sm font-bold uppercase tracking-wider text-stone-500 dark:text-mist">
                     项目
                   </h2>
                   <button
@@ -366,15 +398,15 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
                     onClick={() => setSelectedProject(null)}
                     className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left transition ${
                       selectedProject === null
-                        ? 'bg-stone-100 dark:bg-stone-800'
-                        : 'hover:bg-stone-50 dark:hover:bg-stone-800/50'
+                        ? 'bg-stone-100 dark:bg-ash'
+                        : 'hover:bg-stone-50 dark:hover:bg-ash/50'
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="flex size-6 items-center justify-center rounded-lg bg-stone-200 dark:bg-stone-700">
-                        <FolderSimple size={14} className="text-stone-600 dark:text-stone-300" />
+                      <div className="flex size-6 items-center justify-center rounded-lg bg-stone-200 dark:bg-ash">
+                        <FolderSimple size={14} className="text-stone-600 dark:text-fog" />
                       </div>
-                      <span className="font-medium text-stone-700 dark:text-stone-200">收件箱</span>
+                      <span className="font-medium text-stone-700 dark:text-fog">收件箱</span>
                     </div>
                     <span className="text-xs font-medium text-stone-400">
                       {groupedTasks.inbox.length}
@@ -396,7 +428,7 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
                           onClick={() => setSelectedProject(project.id)}
                           className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left transition ${
                             selectedProject === project.id
-                              ? 'bg-stone-100 dark:bg-stone-800'
+                              ? 'bg-stone-100 dark:bg-ash'
                               : 'hover:bg-stone-50 dark:hover:bg-stone-800/50'
                           }`}
                         >
@@ -413,11 +445,11 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
                               </div>
                             </div>
                             <div className="min-w-0">
-                              <span className="block font-medium text-stone-700 dark:text-stone-200 truncate">
+                              <span className="block font-medium text-stone-700 dark:text-fog truncate">
                                 {project.name}
                               </span>
                               {hasDateRange && (
-                                <span className="block text-[10px] text-stone-400 dark:text-stone-500">
+                                <span className="block text-[10px] text-stone-400 dark:text-mist">
                                   {formatDateShort(project.start_date)}{project.start_date && project.end_date ? ' - ' : ''}{formatDateShort(project.end_date)}
                                 </span>
                               )}
@@ -447,7 +479,7 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
 
             {/* 主内容 - 任务列表 */}
             <div className="lg:col-span-3">
-              <div className="rounded-3xl border border-stone-100 bg-white p-6 shadow-xl shadow-stone-200/50 dark:border-white/5 dark:bg-stone-900 dark:shadow-none">
+              <div className="rounded-3xl border border-stone-100 bg-white p-6 shadow-xl shadow-stone-200/50 dark:border-white/20 dark:bg-graphite dark:shadow-none">
                 <h2 className="mb-6 text-lg font-bold text-stone-900 dark:text-white">
                   {selectedProject 
                     ? projects.find(p => p.id === selectedProject)?.name || '项目'
@@ -461,16 +493,18 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
                       key={task.id}
                       task={task}
                       projects={projects}
+                      allTags={allTags}
                       onToggle={() => toggleTask(task.id)}
                       onUpdateProject={(projectId) => updateTaskProject(task.id, projectId)}
                       onUpdateDueDate={(date) => updateTaskDueDate(task.id, date)}
+                      onUpdate={(updates) => updateTask(task.id, updates)}
                     />
                   ))}
 
                   {(selectedProject ? groupedTasks[selectedProject] : groupedTasks.inbox)?.length === 0 && (
                     <div className="py-12 text-center">
-                      <FolderSimple size={48} className="mx-auto mb-4 text-stone-300 dark:text-stone-600" />
-                      <p className="text-stone-500 dark:text-stone-400">暂无任务</p>
+                      <FolderSimple size={48} className="mx-auto mb-4 text-stone-300 dark:text-mist" />
+                      <p className="text-stone-500 dark:text-mist">暂无任务</p>
                     </div>
                   )}
                 </div>
@@ -487,19 +521,19 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
               <div className="flex gap-2">
                 <button
                   onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
-                  className="rounded-lg px-3 py-1.5 text-sm font-medium text-stone-600 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
+                  className="rounded-lg px-3 py-1.5 text-sm font-medium text-stone-600 hover:bg-stone-100 dark:text-mist dark:hover:bg-ash"
                 >
                   上月
                 </button>
                 <button
                   onClick={() => setCurrentMonth(new Date())}
-                  className="rounded-lg px-3 py-1.5 text-sm font-medium text-stone-600 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
+                  className="rounded-lg px-3 py-1.5 text-sm font-medium text-stone-600 hover:bg-stone-100 dark:text-mist dark:hover:bg-ash"
                 >
                   今天
                 </button>
                 <button
                   onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
-                  className="rounded-lg px-3 py-1.5 text-sm font-medium text-stone-600 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
+                  className="rounded-lg px-3 py-1.5 text-sm font-medium text-stone-600 hover:bg-stone-100 dark:text-mist dark:hover:bg-ash"
                 >
                   下月
                 </button>
@@ -509,7 +543,7 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
             {/* 星期标题 */}
             <div className="mb-2 grid grid-cols-7 gap-2">
               {['日', '一', '二', '三', '四', '五', '六'].map(day => (
-                <div key={day} className="py-2 text-center text-sm font-medium text-stone-500 dark:text-stone-400">
+                <div key={day} className="py-2 text-center text-sm font-medium text-stone-500 dark:text-mist">
                   {day}
                 </div>
               ))}
@@ -543,12 +577,12 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
                     key={index}
                     className={`min-h-[100px] rounded-xl border p-2 transition ${
                       isCurrentMonth
-                        ? 'border-stone-200 bg-white dark:border-stone-700 dark:bg-stone-800'
-                        : 'border-transparent bg-stone-50 opacity-50 dark:bg-stone-900'
+                        ? 'border-stone-200 bg-white dark:border-white/20 dark:bg-graphite'
+                        : 'border-transparent bg-stone-50 opacity-50 dark:bg-coal'
                     } ${isToday ? 'ring-2 ring-amber-400' : ''}`}
                   >
                     <div className={`mb-1 text-sm font-medium ${
-                      isToday ? 'text-amber-600 dark:text-amber-400' : 'text-stone-600 dark:text-stone-300'
+                      isToday ? 'text-amber-600 dark:text-amber-400' : 'text-stone-600 dark:text-fog'
                     }`}>
                       {day.date.getDate()}
                     </div>
@@ -605,7 +639,7 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
       {/* 项目创建/编辑模态框 */}
       {showProjectModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-stone-800">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-graphite dark:border dark:border-white/20">
             <div className="mb-6 flex items-center justify-between">
               <h3 className="text-lg font-bold text-stone-900 dark:text-white">
                 {editingProject ? '编辑项目' : '新建项目'}
@@ -623,7 +657,7 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
 
             <div className="space-y-4">
               <div>
-                <label className="mb-2 block text-sm font-medium text-stone-700 dark:text-stone-300">
+                <label className="mb-2 block text-sm font-medium text-stone-700 dark:text-fog">
                   项目名称
                 </label>
                 <input
@@ -631,12 +665,12 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
                   value={newProjectName}
                   onChange={(e) => setNewProjectName(e.target.value)}
                   placeholder="输入项目名称..."
-                  className="w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-stone-900 outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-100 dark:border-stone-600 dark:bg-stone-700 dark:text-white dark:focus:ring-amber-900"
+                  className="w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-stone-900 outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-100 dark:border-white/30 dark:bg-ash dark:text-fog dark:focus:border-amber-400 dark:focus:ring-amber-500/20"
                 />
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-stone-700 dark:text-stone-300">
+                <label className="mb-2 block text-sm font-medium text-stone-700 dark:text-fog">
                   项目颜色
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -656,28 +690,28 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
 
               {/* 项目时间段 */}
               <div>
-                <label className="mb-2 block text-sm font-medium text-stone-700 dark:text-stone-300">
+                <label className="mb-2 block text-sm font-medium text-stone-700 dark:text-fog">
                   项目时间段
                 </label>
                 <div className="flex items-center gap-3">
                   <div className="flex-1">
-                    <label className="mb-1 block text-xs text-stone-500 dark:text-stone-400">开始日期</label>
+                    <label className="mb-1 block text-xs text-stone-500 dark:text-mist">开始日期</label>
                     <input
                       type="date"
                       value={newProjectStartDate}
                       onChange={(e) => setNewProjectStartDate(e.target.value)}
-                      className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-900 outline-none transition focus:border-amber-400 dark:border-stone-600 dark:bg-stone-700 dark:text-white dark:[color-scheme:dark]"
+                      className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-900 outline-none transition focus:border-amber-400 dark:border-white/30 dark:bg-ash dark:text-fog dark:focus:border-amber-400 dark:[color-scheme:dark]"
                     />
                   </div>
                   <span className="mt-5 text-stone-400">→</span>
                   <div className="flex-1">
-                    <label className="mb-1 block text-xs text-stone-500 dark:text-stone-400">截止日期</label>
+                    <label className="mb-1 block text-xs text-stone-500 dark:text-mist">截止日期</label>
                     <input
                       type="date"
                       value={newProjectEndDate}
                       onChange={(e) => setNewProjectEndDate(e.target.value)}
                       min={newProjectStartDate}
-                      className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-900 outline-none transition focus:border-amber-400 dark:border-stone-600 dark:bg-stone-700 dark:text-white dark:[color-scheme:dark]"
+                      className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-900 outline-none transition focus:border-amber-400 dark:border-white/30 dark:bg-ash dark:text-fog dark:focus:border-amber-400 dark:[color-scheme:dark]"
                     />
                   </div>
                 </div>
@@ -726,52 +760,426 @@ const TodoFullPage = ({ userId, onBack }: TodoFullPageProps) => {
 type TaskRowProps = {
   task: Task
   projects: Project[]
+  allTags: string[]
   onToggle: () => void
   onUpdateProject: (projectId: string | null) => void
   onUpdateDueDate: (date: string | null) => void
+  onUpdate: (updates: Partial<Task>) => void
 }
 
-const TaskRow = ({ task, projects, onToggle, onUpdateProject, onUpdateDueDate }: TaskRowProps) => {
+const TaskRow = ({ task, projects, allTags, onToggle, onUpdateProject, onUpdateDueDate, onUpdate }: TaskRowProps) => {
+  const [isEditing, setIsEditing] = useState(false)
   const [showProjectMenu, setShowProjectMenu] = useState(false)
   const [showDatePicker, setShowDatePicker] = useState(false)
+  const [showProjectSelectorEdit, setShowProjectSelectorEdit] = useState(false)
+  const [showTagSelector, setShowTagSelector] = useState(false)
+  const projectMenuRef = useRef<HTMLDivElement>(null)
+  const datePickerRef = useRef<HTMLDivElement>(null)
+  const projectSelectorEditRef = useRef<HTMLDivElement>(null)
+  const tagSelectorRef = useRef<HTMLDivElement>(null)
+
+  // 编辑状态
+  const [editTitle, setEditTitle] = useState(task.text)
+  const [editPriority, setEditPriority] = useState<TaskPriority>(task.priority || 'medium')
+  const [editEstimate, setEditEstimate] = useState<number | string>(task.estimated_time || 25)
+  const [editTags, setEditTags] = useState<string[]>(task.tags || [])
+  const [editProjectId, setEditProjectId] = useState<string | null>(task.project_id || null)
+  const [newTagInput, setNewTagInput] = useState('')
 
   const priorityStyle = task.priority ? PRIORITY_MAP[task.priority] : null
   const project = projects.find(p => p.id === task.project_id)
 
+  // 重置编辑状态
+  useEffect(() => {
+    if (isEditing) {
+      setEditTitle(task.text)
+      setEditPriority(task.priority || 'medium')
+      setEditEstimate(task.estimated_time || 25)
+      setEditTags(task.tags || [])
+      setEditProjectId(task.project_id || null)
+    }
+  }, [isEditing, task])
+
+  // 点击外部关闭弹出窗口
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (projectMenuRef.current && !projectMenuRef.current.contains(event.target as Node)) {
+        setShowProjectMenu(false)
+      }
+      if (datePickerRef.current && !datePickerRef.current.contains(event.target as Node)) {
+        setShowDatePicker(false)
+      }
+      if (projectSelectorEditRef.current && !projectSelectorEditRef.current.contains(event.target as Node)) {
+        setShowProjectSelectorEdit(false)
+      }
+      if (tagSelectorRef.current && !tagSelectorRef.current.contains(event.target as Node)) {
+        setShowTagSelector(false)
+      }
+    }
+
+    if (showProjectMenu || showDatePicker || showProjectSelectorEdit || showTagSelector) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [showProjectMenu, showDatePicker, showProjectSelectorEdit, showTagSelector])
+
+  // 保存编辑
+  const handleSave = () => {
+    const updates: Partial<Task> = {}
+    let hasChanges = false
+
+    if (editTitle.trim() !== task.text) {
+      updates.text = editTitle.trim()
+      hasChanges = true
+    }
+    if (editPriority !== task.priority) {
+      updates.priority = editPriority
+      hasChanges = true
+    }
+    const finalEstimate = Number(editEstimate) || 25
+    if (finalEstimate !== task.estimated_time) {
+      updates.estimated_time = finalEstimate
+      hasChanges = true
+    }
+    if (JSON.stringify(editTags.sort()) !== JSON.stringify(task.tags?.sort() || [])) {
+      updates.tags = editTags
+      hasChanges = true
+    }
+    if (editProjectId !== (task.project_id || null)) {
+      updates.project_id = editProjectId
+      hasChanges = true
+    }
+
+    if (hasChanges) {
+      onUpdate(updates)
+    }
+    setIsEditing(false)
+  }
+
+  // 添加标签
+  const handleAddTag = () => {
+    const tag = newTagInput.trim()
+    if (tag && !editTags.includes(tag)) {
+      setEditTags([...editTags, tag])
+      setNewTagInput('')
+    }
+  }
+
+  // 移除标签
+  const handleRemoveTag = (tag: string) => {
+    setEditTags(editTags.filter(t => t !== tag))
+  }
+
   return (
-    <div className="group flex items-center gap-3 rounded-xl border border-stone-100 bg-white px-4 py-3 transition hover:border-stone-200 hover:shadow-sm dark:border-stone-700 dark:bg-stone-800 dark:hover:border-stone-600">
-      <button onClick={onToggle} className="flex-none">
-        {task.completed ? (
-          <CheckCircle size={22} weight="fill" className="text-emerald-500" />
-        ) : (
-          <Circle size={22} className="text-stone-300 dark:text-stone-600" />
-        )}
-      </button>
-
-      <div className="min-w-0 flex-1">
-        <p className={`font-medium ${task.completed ? 'text-stone-400 line-through' : 'text-stone-800 dark:text-stone-100'}`}>
-          {task.text}
-        </p>
-        <div className="mt-1 flex flex-wrap items-center gap-2">
-          {priorityStyle && (
-            <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${priorityStyle.bg} ${priorityStyle.color}`}>
-              {priorityStyle.label}
-            </span>
+    <div className={`group flex flex-col gap-3 rounded-xl border border-stone-100 bg-white px-4 py-3 transition hover:border-stone-200 hover:shadow-sm dark:border-white/20 dark:bg-graphite dark:hover:border-white/30 ${
+      isEditing ? 'shadow-md dark:shadow-none' : ''
+    }`}>
+      <div className="flex items-center gap-3">
+        <button onClick={onToggle} className="flex-none">
+          {task.completed ? (
+            <CheckCircle size={22} weight="fill" className="text-emerald-500" />
+          ) : (
+            <Circle size={22} className="text-stone-300 dark:text-mist" />
           )}
-          {task.tags?.map(tag => (
-            <span key={tag} className="rounded bg-stone-100 px-1.5 py-0.5 text-xs text-stone-600 dark:bg-stone-700 dark:text-stone-300">
-              {tag}
-            </span>
-          ))}
-        </div>
-      </div>
+        </button>
 
-      <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1">
+          {isEditing ? (
+            <div className="flex flex-col gap-3">
+              {/* 标题编辑 */}
+              <input
+                autoFocus
+                className="w-full bg-transparent text-base font-medium outline-none border-b-2 border-stone-300 focus:border-stone-800 dark:border-white/30 dark:focus:border-white/50 dark:text-fog pb-1.5"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+              />
+              
+              {/* 编辑工具栏 */}
+              <div className="flex flex-col gap-2">
+                {/* 第一行：优先级、时间、日期 */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* 优先级 */}
+                  <div className="flex items-center gap-0.5 rounded-lg bg-stone-100 p-0.5 dark:bg-white/10 w-fit">
+                    {(['low', 'medium', 'high'] as const).map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setEditPriority(p)}
+                        className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold transition-colors ${
+                          editPriority === p
+                            ? 'bg-white text-stone-900 shadow-sm dark:bg-white/20 dark:text-white'
+                            : 'text-stone-400 hover:text-stone-600 dark:text-mist dark:hover:text-fog'
+                        }`}
+                        title={PRIORITY_MAP[p].label}
+                      >
+                        <Flag weight={editPriority === p ? "fill" : "regular"} size={12} className={editPriority === p ? PRIORITY_MAP[p].color : ''} />
+                        <span>{PRIORITY_MAP[p].label}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* 时间预估 */}
+                  <div className="flex items-center gap-1 rounded-lg bg-stone-100 px-3 py-1 dark:bg-white/10 w-20">
+                    <Clock size={12} className="text-stone-400 dark:text-mist flex-shrink-0" />
+                    <input
+                      type="number"
+                      min="1"
+                      value={editEstimate}
+                      onChange={(e) => setEditEstimate(e.target.value === '' ? '' : parseInt(e.target.value))}
+                      onBlur={() => {
+                          const val = Number(editEstimate)
+                          if (!val || val < 1) setEditEstimate(1)
+                      }}
+                      className="w-full bg-transparent text-center text-xs font-medium outline-none dark:text-fog"
+                    />
+                    <span className="text-xs text-stone-400 dark:text-mist flex-shrink-0">m</span>
+                  </div>
+
+                  {/* 日期选择 */}
+                  <div className="relative" ref={datePickerRef}>
+                    <button
+                      type="button"
+                      onClick={() => setShowDatePicker(!showDatePicker)}
+                      className="flex items-center gap-1 rounded-lg bg-stone-100 px-3 py-1 text-xs font-medium text-stone-500 hover:bg-stone-200 dark:bg-white/10 dark:text-mist dark:hover:bg-white/20 w-28"
+                    >
+                      <ClockCounterClockwise size={12} className="flex-shrink-0" />
+                      <span className="truncate">年/月/日</span>
+                      <CalendarBlank size={12} className="flex-shrink-0" />
+                    </button>
+                    {showDatePicker && (
+                      <div className="absolute left-0 top-full z-10 mt-1 rounded-xl border border-stone-200 bg-white p-3 shadow-lg dark:border-white/20 dark:bg-graphite">
+                        <input
+                          type="date"
+                          value={task.due_date?.split('T')[0] || ''}
+                          onChange={(e) => {
+                            onUpdateDueDate(e.target.value ? new Date(e.target.value).toISOString() : null)
+                            setShowDatePicker(false)
+                          }}
+                          className="rounded-lg border border-stone-200 px-3 py-2 text-sm dark:border-white/30 dark:bg-ash dark:text-fog"
+                        />
+                        {task.due_date && (
+                          <button
+                            onClick={() => {
+                              onUpdateDueDate(null)
+                              setShowDatePicker(false)
+                            }}
+                            className="mt-2 w-full rounded-lg px-3 py-1.5 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                          >
+                            清除日期
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 第二行：标签、链接、项目 */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* 标签输入 */}
+                  <div className="relative flex items-center gap-1 rounded-lg bg-stone-100 px-3 py-1 dark:bg-white/10 w-28" ref={tagSelectorRef}>
+                    <button 
+                      type="button"
+                      onClick={() => setShowTagSelector(!showTagSelector)}
+                      className="text-stone-400 hover:text-stone-600 dark:text-mist dark:hover:text-fog transition-colors flex-shrink-0"
+                      title="选择已有标签"
+                    >
+                      <ListChecks size={12} weight="bold" />
+                    </button>
+                    <div className="h-3 w-px bg-stone-200 dark:bg-white/10 flex-shrink-0" />
+                    <TagIcon size={12} className="text-stone-400 dark:text-mist flex-shrink-0" />
+                    <input
+                      className="flex-1 min-w-0 bg-transparent text-xs outline-none dark:text-fog placeholder:text-stone-400 dark:placeholder:text-mist"
+                      placeholder="标签"
+                      value={newTagInput}
+                      onChange={(e) => setNewTagInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
+                      onBlur={() => setTimeout(() => handleAddTag(), 100)}
+                    />
+                    {/* 标签选择下拉 */}
+                    {showTagSelector && allTags.length > 0 && (
+                      <div className="absolute left-0 top-full z-20 mt-1 max-h-32 w-40 overflow-y-auto rounded-lg border border-stone-200 bg-white shadow-lg dark:border-white/20 dark:bg-graphite">
+                        {allTags
+                          .filter(tag => !editTags.includes(tag))
+                          .map(tag => (
+                            <button
+                              key={tag}
+                              type="button"
+                              className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs hover:bg-stone-50 dark:text-fog dark:hover:bg-ash"
+                              onMouseDown={(e) => {
+                                e.preventDefault()
+                                if (!editTags.includes(tag)) {
+                                  setEditTags([...editTags, tag])
+                                  setShowTagSelector(false)
+                                }
+                              }}
+                            >
+                              <TagIcon size={12} />
+                              <span>#{tag}</span>
+                            </button>
+                          ))}
+                        {allTags.filter(tag => !editTags.includes(tag)).length === 0 && (
+                          <div className="px-3 py-2 text-xs text-stone-400 dark:text-mist">所有标签已添加</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 链接附件（占位，后续可扩展） */}
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 rounded-lg bg-stone-100 px-3 py-1 text-xs font-medium text-stone-500 hover:bg-stone-200 dark:bg-white/10 dark:text-mist dark:hover:bg-white/20 w-20"
+                  >
+                    <Paperclip size={12} className="flex-shrink-0" />
+                    <span>Link</span>
+                  </button>
+
+                  {/* 项目选择器（编辑模式） */}
+                  <div className="relative" ref={projectSelectorEditRef}>
+                    <button 
+                      type="button"
+                      onClick={() => setShowProjectSelectorEdit(!showProjectSelectorEdit)}
+                      className={`flex items-center gap-1 rounded-lg px-3 py-1 text-xs transition-colors w-24 ${
+                        editProjectId 
+                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300' 
+                          : 'bg-stone-100 text-stone-500 hover:bg-stone-200 dark:bg-white/10 dark:text-mist dark:hover:bg-white/20'
+                      }`}
+                    >
+                      <FolderSimple size={12} weight={editProjectId ? 'fill' : 'regular'} className="flex-shrink-0" />
+                      <span className="truncate">{editProjectId ? (projects.find(p => p.id === editProjectId)?.name || '项目') : '项目'}</span>
+                      {editProjectId && (
+                        <button 
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setEditProjectId(null); }}
+                          className="ml-1 hover:opacity-70 flex-shrink-0"
+                        >
+                          <X size={10} />
+                        </button>
+                      )}
+                    </button>
+                    {showProjectSelectorEdit && (
+                    <div className="absolute left-0 top-full z-20 mt-1 w-40 rounded-lg border border-stone-200 bg-white shadow-lg dark:border-white/20 dark:bg-graphite">
+                      <div className="max-h-40 overflow-y-auto">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditProjectId(null)
+                            setShowProjectSelectorEdit(false)
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs hover:bg-stone-50 dark:hover:bg-ash"
+                        >
+                          <FolderSimple size={12} />
+                          收件箱
+                        </button>
+                        {projects.map(project => (
+                          <button
+                            key={project.id}
+                            type="button"
+                            onClick={() => {
+                              setEditProjectId(project.id)
+                              setShowProjectSelectorEdit(false)
+                            }}
+                            className={`w-full flex items-center gap-2 px-3 py-2 text-left text-xs hover:bg-stone-50 dark:hover:bg-ash ${
+                              editProjectId === project.id ? 'bg-blue-50 dark:bg-blue-500/10' : ''
+                            }`}
+                            style={editProjectId === project.id ? {} : { color: project.color }}
+                          >
+                            <span 
+                              className="w-2 h-2 rounded-full flex-shrink-0" 
+                              style={{ backgroundColor: project.color }}
+                            />
+                            <span className="truncate dark:text-fog">{project.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 保存/取消按钮 */}
+                <div className="flex items-center gap-1 ml-auto">
+                  <button
+                    onClick={handleSave}
+                    className="flex items-center gap-1 rounded-lg bg-stone-800 px-3 py-1 text-xs font-bold text-white hover:bg-stone-700 dark:bg-white dark:text-coal dark:hover:bg-white/90"
+                    title="保存"
+                  >
+                    <FloppyDisk weight="bold" size={12} />
+                    保存
+                  </button>
+                  <button
+                    onClick={() => setIsEditing(false)}
+                    className="flex items-center gap-1 rounded-lg bg-stone-100 px-3 py-1 text-xs font-bold text-stone-600 hover:bg-stone-200 dark:bg-white/10 dark:text-fog dark:hover:bg-white/20"
+                    title="取消"
+                  >
+                    <XCircle weight="bold" size={12} />
+                    取消
+                  </button>
+                </div>
+              </div>
+
+              {/* 标签展示（编辑模式） */}
+              {editTags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {editTags.map((tag) => (
+                    <span key={tag} className="flex items-center gap-1 rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600 dark:bg-ash dark:text-fog">
+                      #{tag}
+                      <button type="button" onClick={() => handleRemoveTag(tag)} className="hover:opacity-70">
+                        <X size={10} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              <p 
+                onDoubleClick={() => !task.completed && setIsEditing(true)}
+                className={`font-medium cursor-text ${task.completed ? 'text-stone-400 line-through' : 'text-stone-800 dark:text-fog'}`}
+                title="双击编辑"
+              >
+                {task.text}
+              </p>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                {priorityStyle && (
+                  <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${priorityStyle.bg} ${priorityStyle.color}`}>
+                    {priorityStyle.label}
+                  </span>
+                )}
+                {task.tags?.map(tag => (
+                  <span key={tag} className="rounded bg-stone-100 px-1.5 py-0.5 text-xs text-stone-600 dark:bg-ash dark:text-fog">
+                    #{tag}
+                  </span>
+                ))}
+                {task.estimated_time && (
+                  <span className="flex items-center gap-1 rounded bg-stone-100 px-1.5 py-0.5 text-xs text-stone-500 dark:bg-ash dark:text-mist">
+                    <Clock size={10} />
+                    {task.estimated_time}m
+                  </span>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {!isEditing && !task.completed && (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="rounded-lg p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-600 dark:text-mist dark:hover:bg-ash dark:hover:text-fog"
+              title="编辑任务"
+            >
+              <PencilSimple size={16} weight="bold" />
+            </button>
+          )}
         {/* 项目选择 */}
-        <div className="relative">
+        <div className="relative" ref={projectMenuRef}>
           <button
             onClick={() => setShowProjectMenu(!showProjectMenu)}
-            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-stone-500 transition hover:bg-stone-100 dark:hover:bg-stone-700"
+            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-stone-500 transition hover:bg-stone-100 dark:hover:bg-ash"
             style={project ? { color: project.color } : {}}
           >
             <FolderSimple size={14} weight={project ? 'fill' : 'regular'} />
@@ -779,13 +1187,13 @@ const TaskRow = ({ task, projects, onToggle, onUpdateProject, onUpdateDueDate }:
           </button>
           
           {showProjectMenu && (
-            <div className="absolute right-0 top-full z-10 mt-1 w-40 rounded-xl border border-stone-200 bg-white py-1 shadow-lg dark:border-stone-700 dark:bg-stone-800">
+            <div className="absolute right-0 top-full z-10 mt-1 w-40 rounded-xl border border-stone-200 bg-white py-1 shadow-lg dark:border-white/20 dark:bg-graphite">
               <button
                 onClick={() => {
                   onUpdateProject(null)
                   setShowProjectMenu(false)
                 }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-600 hover:bg-stone-50 dark:text-stone-300 dark:hover:bg-stone-700"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-600 hover:bg-stone-50 dark:text-fog dark:hover:bg-ash"
               >
                 <FolderSimple size={14} />
                 收件箱
@@ -797,7 +1205,7 @@ const TaskRow = ({ task, projects, onToggle, onUpdateProject, onUpdateDueDate }:
                     onUpdateProject(p.id)
                     setShowProjectMenu(false)
                   }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-50 dark:hover:bg-stone-700"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-50 dark:hover:bg-ash"
                   style={{ color: p.color }}
                 >
                   <FolderSimple size={14} weight="fill" />
@@ -809,10 +1217,10 @@ const TaskRow = ({ task, projects, onToggle, onUpdateProject, onUpdateDueDate }:
         </div>
 
         {/* 日期选择 */}
-        <div className="relative">
+        <div className="relative" ref={datePickerRef}>
           <button
             onClick={() => setShowDatePicker(!showDatePicker)}
-            className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition hover:bg-stone-100 dark:hover:bg-stone-700 ${
+            className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition hover:bg-stone-100 dark:hover:bg-ash ${
               task.due_date ? 'text-amber-600 dark:text-amber-400' : 'text-stone-400'
             }`}
           >
@@ -821,7 +1229,7 @@ const TaskRow = ({ task, projects, onToggle, onUpdateProject, onUpdateDueDate }:
           </button>
 
           {showDatePicker && (
-            <div className="absolute right-0 top-full z-10 mt-1 rounded-xl border border-stone-200 bg-white p-3 shadow-lg dark:border-stone-700 dark:bg-stone-800">
+            <div className="absolute right-0 top-full z-10 mt-1 rounded-xl border border-stone-200 bg-white p-3 shadow-lg dark:border-white/20 dark:bg-graphite">
               <input
                 type="date"
                 value={task.due_date?.split('T')[0] || ''}
@@ -829,7 +1237,7 @@ const TaskRow = ({ task, projects, onToggle, onUpdateProject, onUpdateDueDate }:
                   onUpdateDueDate(e.target.value ? new Date(e.target.value).toISOString() : null)
                   setShowDatePicker(false)
                 }}
-                className="rounded-lg border border-stone-200 px-3 py-2 text-sm dark:border-stone-600 dark:bg-stone-700"
+                className="rounded-lg border border-stone-200 px-3 py-2 text-sm dark:border-white/30 dark:bg-ash dark:text-fog"
               />
               {task.due_date && (
                 <button
@@ -847,8 +1255,10 @@ const TaskRow = ({ task, projects, onToggle, onUpdateProject, onUpdateDueDate }:
         </div>
       </div>
     </div>
+    </div>
   )
 }
+
 
 export default TodoFullPage
 

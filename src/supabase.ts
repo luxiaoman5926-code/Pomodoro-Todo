@@ -16,6 +16,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
+    storage: typeof window !== 'undefined' ? window.localStorage : undefined, // 明确指定使用 localStorage 存储 session
+    storageKey: 'supabase.auth.token', // 使用标准存储键
   },
 })
 

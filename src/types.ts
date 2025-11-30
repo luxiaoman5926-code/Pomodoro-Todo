@@ -15,7 +15,7 @@ export type Task = {
   created_at?: string
   completed_at?: string | null
   user_id?: string
-  pomodoros?: number // 已完成的番茄钟数量 (0-4)
+  pomodoros?: number // 已完成的番茄钟数量 (0-99)
   tags?: string[]
   priority?: TaskPriority
   estimated_pomodoros?: number // @deprecated use estimated_time
@@ -133,4 +133,21 @@ export type TransferItem = {
     [key: string]: any
   }
   created_at: string
+}
+
+// 工具相关类型
+export type ToolId = 'translation' | 'document-converter' | 'image-converter' | 'audio-converter' | 'video-converter' | 'video-to-audio' | string
+
+export interface ToolProps {
+  toolId: ToolId
+}
+
+export interface Tool {
+  id: ToolId
+  name: string
+  description: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  icon: React.ComponentType<any>
+  component: React.ComponentType<ToolProps>
+  category?: string
 }

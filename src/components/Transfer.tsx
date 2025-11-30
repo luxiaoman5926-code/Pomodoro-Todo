@@ -11,6 +11,9 @@ import {
   DownloadSimple,
   X,
   Spinner,
+  Copy,
+  Check,
+  PencilSimple,
 } from '@phosphor-icons/react'
 import { useTransfers } from '../hooks/useTransfers'
 import type { TransferItem, TransferType } from '../types'
@@ -48,6 +51,9 @@ const Transfer = ({ userId }: TransferProps) => {
   // Rename states
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
+  
+  // Copy state
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   // 过滤列表
   const filteredItems = items.filter((item) => activeTab === 'all' || item.type === activeTab)
@@ -87,9 +93,8 @@ const Transfer = ({ userId }: TransferProps) => {
   }
 
   const startRenaming = (item: TransferItem) => {
-    if (item.type === 'text') return
     setEditingId(item.id)
-    setEditName(item.metadata.name || '')
+    setEditName(item.type === 'text' ? (item.metadata.name || '纯文本') : (item.metadata.name || ''))
   }
 
   const handleRename = async () => {
@@ -99,6 +104,18 @@ const Transfer = ({ userId }: TransferProps) => {
     }
     await renameTransfer(editingId, editName.trim())
     setEditingId(null)
+  }
+
+  const handleCopy = async (item: TransferItem) => {
+    if (item.type !== 'text') return
+    
+    try {
+      await navigator.clipboard.writeText(item.content)
+      setCopiedId(item.id)
+      setTimeout(() => setCopiedId(null), 2000)
+    } catch (error) {
+      console.error('Failed to copy text:', error)
+    }
   }
 
   return (
@@ -124,18 +141,18 @@ const Transfer = ({ userId }: TransferProps) => {
       {/* 顶部操作区 */}
       <ThemedCard label="传输" title="跨设备同步" meta="文本、文件极速互传">
         {/* 输入框 */}
-        <form onSubmit={handleTextSubmit} className="mb-4 flex gap-2">
+        <form onSubmit={handleTextSubmit} className="mb-6 flex gap-3">
           <input
             type="text"
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="输入文本或粘贴链接..."
-            className="flex-1 rounded-xl border border-stone-200 bg-stone-50 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-white/10 dark:bg-white/5 dark:text-white"
+            className="flex-1 rounded-xl border border-stone-200 bg-white px-4 py-3 text-base focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-white/20 dark:bg-ash dark:text-fog dark:focus:border-blue-400"
           />
           <button
             type="submit"
             disabled={!text.trim()}
-            className="flex items-center justify-center rounded-xl bg-blue-600 px-4 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex items-center justify-center rounded-xl bg-blue-600 px-5 py-3 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-600"
           >
             <PaperPlaneRight size={20} weight="bold" />
           </button>
@@ -143,7 +160,7 @@ const Transfer = ({ userId }: TransferProps) => {
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="flex items-center justify-center rounded-xl border border-stone-200 bg-white px-4 text-stone-600 transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-white"
+            className="flex items-center justify-center rounded-xl border border-stone-200 bg-white px-5 py-3 text-stone-600 transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/20 dark:bg-ash dark:text-fog dark:hover:bg-white/10"
           >
             {uploading ? <Spinner size={20} className="animate-spin" /> : <UploadSimple size={20} weight="bold" />}
           </button>
@@ -156,72 +173,73 @@ const Transfer = ({ userId }: TransferProps) => {
         </form>
 
         {/* 分类标签 */}
-        <div className="mb-4 flex flex-wrap gap-2">
+        <div className="mb-6 flex flex-wrap gap-2">
           {TYPE_TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+              className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all ${
                 activeTab === tab.id
-                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                  : 'bg-stone-50 text-stone-500 hover:bg-stone-100 dark:bg-white/5 dark:text-white/40 dark:hover:bg-white/10'
+                  ? 'bg-blue-100 text-blue-700 shadow-sm dark:bg-blue-500/20 dark:text-blue-300 dark:shadow-none'
+                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-white/10 dark:text-fog dark:hover:bg-white/20'
               }`}
             >
-              <tab.icon size={14} weight={activeTab === tab.id ? 'fill' : 'regular'} />
+              <tab.icon size={16} weight={activeTab === tab.id ? 'fill' : 'regular'} />
               {tab.label}
             </button>
           ))}
         </div>
 
         {/* 列表内容 */}
-        <div className="space-y-3">
+        <div className="space-y-4">
           {loading ? (
-            <div className="flex justify-center py-8">
-              <Spinner size={24} className="animate-spin text-stone-400" />
+            <div className="flex justify-center py-12">
+              <Spinner size={32} className="animate-spin text-stone-400 dark:text-mist" weight="duotone" />
             </div>
           ) : filteredItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-stone-300 dark:text-white/20">
-              <UploadSimple size={48} weight="duotone" className="mb-2 opacity-50" />
-              <p className="text-sm">暂无内容，拖入文件或输入文本</p>
+            <div className="flex flex-col items-center justify-center py-16 text-stone-400 dark:text-mist">
+              <UploadSimple size={64} weight="duotone" className="mb-4 opacity-50" />
+              <p className="text-base font-medium text-stone-600 dark:text-fog">暂无内容</p>
+              <p className="mt-2 text-sm text-stone-500 dark:text-mist">拖入文件或输入文本开始传输</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {filteredItems.map((item) => (
                 <div
                   key={item.id}
-                  className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-stone-200 bg-white transition-all hover:shadow-md dark:border-white/10 dark:bg-white/5"
+                  className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-stone-200 bg-white transition-all hover:border-stone-300 hover:shadow-lg dark:border-white/20 dark:bg-graphite dark:hover:border-white/30"
                 >
                   {/* 内容预览 */}
                   <div 
-                    className="flex h-32 cursor-pointer items-center justify-center bg-stone-50 p-4 dark:bg-black/20"
+                    className="flex h-40 cursor-pointer items-center justify-center bg-stone-50 p-6 dark:bg-coal/50"
                     onClick={() => item.type !== 'text' && setPreviewItem(item)}
                   >
                     {item.type === 'text' ? (
-                      <p className="line-clamp-4 text-sm text-stone-600 dark:text-white/80 break-all">{item.content}</p>
+                      <p className="line-clamp-4 text-base text-stone-700 dark:text-fog break-all leading-relaxed">{item.content}</p>
                     ) : item.type === 'image' ? (
-                      <img src={item.url} alt={item.metadata.name} className="h-full w-full object-contain" />
+                      <img src={item.url} alt={item.metadata.name} className="h-full w-full object-contain rounded-lg" />
                     ) : item.type === 'video' ? (
                       <div className="relative flex items-center justify-center">
-                        <VideoIcon size={48} className="text-stone-300" />
-                        <div className="absolute rounded-full bg-black/50 p-2 text-white">
-                          <div className="h-0 w-0 border-b-[6px] border-l-[10px] border-t-[6px] border-b-transparent border-l-white border-t-transparent ml-0.5" />
+                        <VideoIcon size={56} className="text-stone-400 dark:text-mist" weight="duotone" />
+                        <div className="absolute rounded-full bg-black/60 p-3 text-white dark:bg-white/20">
+                          <div className="h-0 w-0 border-b-[8px] border-l-[12px] border-t-[8px] border-b-transparent border-l-white border-t-transparent ml-0.5" />
                         </div>
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center gap-2 text-stone-400">
-                        {item.type === 'audio' ? <MusicNotes size={32} /> : <FileIcon size={32} />}
-                        <span className="text-xs uppercase">{item.metadata.name?.split('.').pop()}</span>
+                      <div className="flex flex-col items-center gap-3 text-stone-400 dark:text-mist">
+                        {item.type === 'audio' ? <MusicNotes size={40} weight="duotone" /> : <FileIcon size={40} weight="duotone" />}
+                        <span className="text-sm font-medium uppercase">{item.metadata.name?.split('.').pop()}</span>
                       </div>
                     )}
                   </div>
 
                   {/* 信息栏 */}
-                  <div className="flex items-center justify-between px-3 py-2">
+                  <div className="flex items-center justify-between gap-3 border-t border-stone-100 bg-stone-50/50 px-4 py-3 dark:border-white/20 dark:bg-coal/30">
                     <div className="min-w-0 flex-1">
                         {editingId === item.id ? (
                             <input
                                 autoFocus
-                                className="w-full rounded bg-white px-1 py-0.5 text-xs font-medium text-stone-700 outline-none ring-1 ring-blue-500 dark:bg-stone-800 dark:text-white"
+                                className="w-full rounded-lg border border-blue-500 bg-white px-2 py-1.5 text-sm font-medium text-stone-900 outline-none ring-2 ring-blue-500/20 dark:border-blue-400 dark:bg-ash dark:text-fog"
                                 value={editName}
                                 onChange={(e) => setEditName(e.target.value)}
                                 onBlur={handleRename}
@@ -230,36 +248,53 @@ const Transfer = ({ userId }: TransferProps) => {
                             />
                         ) : (
                             <p 
-                                onDoubleClick={() => startRenaming(item)}
-                                className="truncate text-xs font-medium text-stone-700 dark:text-white/90 cursor-text select-none"
-                                title="双击重命名"
+                                className="mb-1 truncate text-sm font-medium text-stone-800 dark:text-stone-100 cursor-default select-none"
                             >
-                                {item.type === 'text' ? '纯文本' : item.metadata.name}
+                                {item.type === 'text' ? (item.metadata.name || '纯文本') : item.metadata.name}
                             </p>
                         )}
-                      <p className="text-[10px] text-stone-400 dark:text-white/40">
-                        {new Date(item.created_at).toLocaleDateString()} 
+                      <p className="text-xs text-stone-500 dark:text-stone-400">
+                        {new Date(item.created_at).toLocaleDateString('zh-CN')} 
                         {item.metadata.size && ` · ${formatSize(item.metadata.size)}`}
                       </p>
                     </div>
-                    <div className="flex items-center gap-1">
-                      {item.type !== 'text' && item.url && (
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {item.type === 'text' ? (
+                        <button
+                          onClick={() => handleCopy(item)}
+                          className="rounded-lg p-2 text-stone-500 transition-colors hover:bg-stone-200 hover:text-blue-600 dark:text-stone-400 dark:hover:bg-stone-700 dark:hover:text-blue-400"
+                          title="复制"
+                        >
+                          {copiedId === item.id ? (
+                            <Check size={16} weight="bold" className="text-emerald-600 dark:text-emerald-400" />
+                          ) : (
+                            <Copy size={16} weight="bold" />
+                          )}
+                        </button>
+                      ) : item.url ? (
                         <a
                           href={item.url}
                           download={item.metadata.name}
-                          className="rounded p-1.5 text-stone-400 hover:bg-stone-100 hover:text-blue-600 dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-blue-400"
+                          className="rounded-lg p-2 text-stone-500 transition-colors hover:bg-stone-200 hover:text-blue-600 dark:text-stone-400 dark:hover:bg-stone-700 dark:hover:text-blue-400"
                           title="下载"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <DownloadSimple size={14} weight="bold" />
+                          <DownloadSimple size={16} weight="bold" />
                         </a>
-                      )}
+                      ) : null}
+                      <button
+                        onClick={() => startRenaming(item)}
+                        className="rounded-lg p-2 text-stone-500 transition-colors hover:bg-stone-200 hover:text-blue-600 dark:text-stone-400 dark:hover:bg-stone-700 dark:hover:text-blue-400"
+                        title="重命名"
+                      >
+                        <PencilSimple size={16} weight="bold" />
+                      </button>
                       <button
                         onClick={() => deleteTransfer(item.id, item.content, item.type)}
-                        className="rounded p-1.5 text-stone-400 hover:bg-stone-100 hover:text-red-500 dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-red-400"
+                        className="rounded-lg p-2 text-stone-500 transition-colors hover:bg-stone-200 hover:text-red-500 dark:text-stone-400 dark:hover:bg-stone-700 dark:hover:text-red-400"
                         title="删除"
                       >
-                        <Trash size={14} weight="bold" />
+                        <Trash size={16} weight="bold" />
                       </button>
                     </div>
                   </div>

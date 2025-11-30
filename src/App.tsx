@@ -1,5 +1,5 @@
 import { useEffect, useState, lazy, Suspense } from 'react'
-import { Moon, Sun, Spinner, Timer as TimerIcon, ChartBar, PaperPlaneRight, Gear, ListChecks } from '@phosphor-icons/react'
+import { Moon, Sun, Spinner, Timer as TimerIcon, ChartBar, PaperPlaneRight, Gear, ListChecks, Wrench } from '@phosphor-icons/react'
 import InstallPrompt from './components/InstallPrompt'
 import LoginPage from './components/LoginPage'
 import Timer from './components/Timer'
@@ -15,11 +15,12 @@ const Statistics = lazy(() => import('./components/Statistics'))
 const Transfer = lazy(() => import('./components/Transfer'))
 const Settings = lazy(() => import('./components/Settings'))
 const TodoFullPage = lazy(() => import('./components/TodoFullPage'))
+const ToolsPage = lazy(() => import('./components/ToolsPage'))
 
 const App = () => {
   const { theme, toggleTheme } = useTheme()
   const { user, loading, signInWithGoogle, signInWithGithub, signInWithEmail, signUpWithEmail, signOut } = useAuth()
-  const [activeTab, setActiveTab] = useState<'timer' | 'statistics' | 'transfer' | 'settings' | 'tasks'>('timer')
+  const [activeTab, setActiveTab] = useState<'timer' | 'statistics' | 'transfer' | 'settings' | 'tasks' | 'tools'>('timer')
 
   // 加载中状态
   if (loading) {
@@ -47,7 +48,7 @@ const App = () => {
 
   // 已登录显示主应用
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-stone-50 p-4 sm:p-8 md:p-12 text-stone-900 transition-colors duration-300 dark:bg-stone-950 dark:text-stone-100">
+    <div className="flex min-h-screen w-full items-center justify-center bg-stone-50 p-4 sm:p-8 md:p-12 text-stone-900 transition-colors duration-300 dark:bg-coal dark:text-fog">
       <div className="w-full max-w-7xl">
         {/* 顶部 Header */}
         <header className="mb-12 flex flex-col sm:flex-row items-start sm:items-end justify-between px-4 gap-6">
@@ -61,13 +62,13 @@ const App = () => {
           </div>
 
           <div className="flex items-center gap-6 self-end sm:self-auto">
-            <p className="hidden text-base font-medium text-stone-400 dark:text-stone-600 lg:block">
+            <p className="hidden text-base font-medium text-stone-400 dark:text-mist lg:block">
               保持专注 · 高效产出
             </p>
             <div className="flex items-center gap-3">
                 <button
                 onClick={toggleTheme}
-                className="flex size-12 items-center justify-center rounded-full bg-white text-stone-900 shadow-sm transition-transform hover:scale-105 active:scale-95 dark:bg-stone-800 dark:text-stone-200 dark:hover:bg-stone-700"
+                className="flex size-12 items-center justify-center rounded-full bg-white text-stone-900 shadow-sm transition-transform hover:scale-105 active:scale-95 dark:bg-ash dark:text-fog dark:hover:bg-white/10"
                 aria-label="切换主题"
                 >
                 {theme === 'light' ? (
@@ -113,6 +114,12 @@ const App = () => {
             icon={Gear}
             label="设置"
           />
+          <TabButton
+            active={activeTab === 'tools'}
+            onClick={() => setActiveTab('tools')}
+            icon={Wrench}
+            label="工具"
+          />
         </nav>
 
         {/* 主布局 */}
@@ -138,8 +145,8 @@ const TabButton = ({ active, onClick, icon: Icon, label }: TabButtonProps) => (
     onClick={onClick}
     className={`flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold transition-all ${
       active
-        ? 'bg-stone-900 text-white shadow-lg shadow-stone-900/10 dark:bg-white dark:text-stone-900'
-        : 'bg-white text-stone-600 hover:bg-stone-100 dark:bg-stone-900 dark:text-stone-400 dark:hover:bg-stone-800'
+        ? 'bg-stone-900 text-white shadow-lg shadow-stone-900/10 dark:bg-white dark:text-coal'
+        : 'bg-white text-stone-600 hover:bg-stone-100 dark:bg-graphite dark:text-mist dark:hover:bg-ash'
     }`}
   >
     <Icon size={20} weight={active ? 'fill' : 'regular'} />
@@ -150,8 +157,8 @@ const TabButton = ({ active, onClick, icon: Icon, label }: TabButtonProps) => (
 // PomodoroProvider 内容组件
 type PomodoroProviderContentProps = {
   userId: string
-  activeTab: 'timer' | 'statistics' | 'transfer' | 'settings' | 'tasks'
-  onNavigate: (tab: 'timer' | 'statistics' | 'transfer' | 'settings' | 'tasks') => void
+  activeTab: 'timer' | 'statistics' | 'transfer' | 'settings' | 'tasks' | 'tools'
+  onNavigate: (tab: 'timer' | 'statistics' | 'transfer' | 'settings' | 'tasks' | 'tools') => void
 }
 
 const PomodoroProviderContent = ({ userId, activeTab, onNavigate }: PomodoroProviderContentProps) => {
@@ -222,6 +229,14 @@ const PomodoroProviderContent = ({ userId, activeTab, onNavigate }: PomodoroProv
     return (
       <Suspense fallback={<LoadingFallback />}>
         <Settings />
+      </Suspense>
+    )
+  }
+
+  if (activeTab === 'tools') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <ToolsPage />
       </Suspense>
     )
   }

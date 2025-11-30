@@ -55,3 +55,5 @@ CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id);
 CREATE INDEX IF NOT EXISTS idx_todos_project_id ON todos(project_id);
 CREATE INDEX IF NOT EXISTS idx_todos_due_date ON todos(due_date);
 
+
+
